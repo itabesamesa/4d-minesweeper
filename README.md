@@ -12,6 +12,7 @@ You have to find all the mines in a 4 dimensional field. The pink cursor highlig
 
 ### Controls
 
+<pre>
 >  Move right in x:     right arrow, l\
 >  Move left in x:      left arrow, h\
 >  Move up in y:        up arrow, k\
@@ -29,6 +30,7 @@ You have to find all the mines in a 4 dimensional field. The pink cursor highlig
 >  Start new game:      n\
 >  Print controls:      c\
 >  Quit game:           q
+</pre>
 
 ## Compiling and running
 
@@ -52,6 +54,7 @@ To run the program, simply type:
 
 There are a few extra options you could add, if you don't want to edit the settings while the game is running
 
+<pre>
 >  -h, -?, --help         Show this menu\
 >  -d, --do_random        If true, sets the seed to the current time\
 >  -s, --seed             Input seed as unsigned integer\
@@ -59,6 +62,7 @@ There are a few extra options you could add, if you don't want to edit the setti
 >  -r, --recursion_depth  The amount of recursion allowed when uncovering fields\
 >  -a, --area, --size     Size of the game (must be given as comma separated list of unsigned integers e.g 4, 4, 4, 4)\
 >  -i, --show_info        Show info about the current game. Can be set to true or false
+</pre>
 
 ## Missing features
 
