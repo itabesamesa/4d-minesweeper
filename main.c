@@ -820,7 +820,7 @@ void print_controls() {
   move_terminal_cursor_down(); printf("  Move down in y:      s, ctrl-j");
   move_terminal_cursor_down(); printf("  Mark bomb:           m");
   move_terminal_cursor_down(); printf("  Uncover field:       \e[3mspace\e[0m");
-  move_terminal_cursor_down(); printf("  Find empty field:     f");
+  move_terminal_cursor_down(); printf("  Find empty field:    f");
   move_terminal_cursor_down(); printf("  Turn on delta mode:  u");
   move_terminal_cursor_down(); printf("  Pause game:          p");
   move_terminal_cursor_down(); printf("  Open options:        o");

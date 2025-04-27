@@ -23,7 +23,7 @@ You have to find all the mines in a 4 dimensional field. The pink cursor highlig
   Move down in y:      s, ctrl-j
   Mark bomb:           m
   Uncover field:       space
-  Find empty field:     f
+  Find empty field:    f
   Turn on delta mode:  u
   Pause game:          p
   Open options:        o
