@@ -820,7 +820,7 @@ void print_controls() {
   move_terminal_cursor_down(); printf("  Move down in y:      s, ctrl-j");
   move_terminal_cursor_down(); printf("  Mark bomb:           m");
   move_terminal_cursor_down(); printf("  Uncover field:       \e[3mspace\e[0m");
-  move_terminal_cursor_down(); printf("  Find empty fiel:     f");
+  move_terminal_cursor_down(); printf("  Find empty field:     f");
   move_terminal_cursor_down(); printf("  Turn on delta mode:  u");
   move_terminal_cursor_down(); printf("  Pause game:          p");
   move_terminal_cursor_down(); printf("  Open options:        o");
@@ -842,7 +842,7 @@ void print_help_menu() {
   move_terminal_cursor_down();
   printf("-r, --recursion_depth  The amount of recursion allowed when uncovering fields");
   move_terminal_cursor_down();
-  printf("-a, --area, --size     Size of the game (must be given as comma separated list of unsigned integers e.g 4, 4, 4, 4)");
+  printf("-a, --area, --size     Size of the game (must be given as a comma separated list of unsigned integers e.g 4, 4, 4, 4)");
   move_terminal_cursor_down();
   printf("-i, --show_info        Show info about the current game. Can be set to true or false");
 }

@@ -6,9 +6,9 @@
 
 ## How to play
 
-You have to find all the mines in a 4 dimensional field. The pink cursor highlights the current field your on and its value shows the number of bombs that are around it. To help you find which fields are in the area of influence of the current field, they are highlighted in a less saturated shade of pink. Have fun finding all the mines!
+You have to find all the mines in a 4 dimensional field. The pink cursor highlights the current field you're on and its value shows the number of bombs that are around it. To help you find which fields are in the area of influence of the current field, they are highlighted in a less saturated shade of pink. Have fun finding all the mines!
 
-![A screenshot if a finished game](screenshot2.png)
+![A screenshot of a finished game](screenshot2.png)
 
 ### Controls
 
@@ -23,7 +23,7 @@ You have to find all the mines in a 4 dimensional field. The pink cursor highlig
   Move down in y:      s, ctrl-j
   Mark bomb:           m
   Uncover field:       space
-  Find empty fiel:     f
+  Find empty field:     f
   Turn on delta mode:  u
   Pause game:          p
   Open options:        o
@@ -41,7 +41,7 @@ gcc main.c mtwister.c -lm -o 4dminsweeper
 ```
 
 > [!WARNING]
-> This program was made of Linux, i doubt that it would work on windows
+> This program was made for Linux, i doubt that it would work on windows
 
 To run the program, simply type:
 
@@ -60,7 +60,7 @@ There are a few extra options you could add, if you don't want to edit the setti
   -s, --seed             Input seed as unsigned integer
   -b, --bombs            Input amount of bombs as unsigned integer
   -r, --recursion_depth  The amount of recursion allowed when uncovering fields
-  -a, --area, --size     Size of the game (must be given as comma separated list of unsigned integers e.g 4, 4, 4, 4)
+  -a, --area, --size     Size of the game (must be given as a comma separated list of unsigned integers e.g 4, 4, 4, 4)
   -i, --show_info        Show info about the current game. Can be set to true or false
 </pre>
 
