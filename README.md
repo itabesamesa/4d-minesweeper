@@ -68,4 +68,4 @@ There are a few extra options you could add, if you don't want to edit the setti
 
 - Delta mode: decrement surrounding numbers when bomb is marked
 - Big numbers: currently i don't know what will happen if a field has a 3 digit number
-- Fix timer: currently the timer only updates when you move, idk hoe to fix it
+- Fix timer: currently the timer only updates when you move, idk how to fix it
