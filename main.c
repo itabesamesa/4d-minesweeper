@@ -34,6 +34,7 @@ typedef struct _grid {
   time_t offset;
   unsigned int recusion_depth;
   short* mask;
+  short* delta;
   short grid[];
 } grid;
 
@@ -277,7 +278,7 @@ void place_empty(grid* g, MTRand r) {
 
 grid* create_grid(xyzq_int size, unsigned long bombs, unsigned int seed, unsigned int recusion_depth) {
   unsigned long len = get_size(size);
-  grid* g = (grid*)malloc(sizeof(grid)+len*sizeof(short)*2);
+  grid* g = (grid*)malloc(sizeof(grid)+len*sizeof(short)*3);
   g->size = size;
   g->len = len;
   g->uncovered = 0;
@@ -291,6 +292,7 @@ grid* create_grid(xyzq_int size, unsigned long bombs, unsigned int seed, unsigne
   g->offset = 0;
   g->recusion_depth = recusion_depth;
   g->mask = &(g->grid[len]);
+  g->delta = &(g->mask[len]);
   MTRand r = seedRand(g->seed);
   if (g->bombs < g->len/2) {
     for (long i = 0; i < g->len; i++) {
@@ -303,6 +305,7 @@ grid* create_grid(xyzq_int size, unsigned long bombs, unsigned int seed, unsigne
     }
     place_empty(g, r);
   }
+  memcpy(g->delta, g->grid, len*sizeof(short));
   for (long i = 0; i < g->len; i++) {
     g->mask[i] = COVERED;
   }
@@ -366,11 +369,23 @@ void print_wide_str_with_buffer(grid* g, xy_int p, char* s, unsigned int print_b
 }
 
 void print_short_with_buffer(grid* g, xy_int p, short n, unsigned int print_buffer) {
-  if (n < 10) {
-    int str = 0xff10+n;
-    repeat_str_at(p, ' ', print_buffer-1);
-    printf("%lc", str);
-    if (g->display_width-print_buffer-1) printf("%*c", g->display_width-print_buffer-1, ' ');
+  if (n < 0) {
+    unsigned int buffer = g->display_width-(int)log10(-n)-2;
+    unsigned int half_buffer = buffer/2;
+    //fprintf(stderr, "%d %d %d\n", buffer, half_buffer, buffer-half_buffer);
+    printf("\e[%d;%dH", p.y, p.x);
+    if (half_buffer) printf("%*c", half_buffer, ' ');
+    printf("%d", n);
+    if (buffer-half_buffer) printf("%*c", buffer-half_buffer, ' ');
+  } else if (n < 10) {
+    if (n == 0) {
+      repeat_str_at(p, ' ', g->display_width);
+    } else {
+      int str = 0xff10+n;
+      repeat_str_at(p, ' ', print_buffer-1);
+      printf("%lc", str);
+      if (g->display_width-print_buffer-1) printf("%*c", g->display_width-print_buffer-1, ' ');
+    }
   } else {
     unsigned int buffer = g->display_width-(int)log10(n)-1;
     unsigned int half_buffer = buffer/2;
@@ -461,7 +476,15 @@ void print_paused_time_elapsed(grid* g, xy_int pos) {
   printf("Time elapsed: %d seconds", g->offset);
 }
 
-void print_field(grid* g, xyzq_int p) {
+short grid_value(grid* g, unsigned long pos) {
+  return g->grid[pos];
+}
+
+short delta_value(grid* g, unsigned long pos) {
+  return g->delta[pos];
+}
+
+void print_field(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
   set_fg_colour(BLACK);
   unsigned int print_buffer = (g->display_width)/2;
   if (p.x < g->size.x && p.y < g->size.y && p.z < g->size.z && p.q < g->size.q) {
@@ -473,8 +496,8 @@ void print_field(grid* g, xyzq_int p) {
         //repeat_str_at(p2, ' ', print_buffer-1);
         //printf("💣%*c", g->display_width-print_buffer-1, ' ');
       } else {
-        if (g->grid[pos]) {
-          print_short_with_buffer(g, p2, g->grid[pos], print_buffer);
+        if (g->grid[pos] != 0) {
+          print_short_with_buffer(g, p2, (*get_value)(g, pos), print_buffer);
         } else {
           repeat_str_at(p2, ' ', g->display_width);
         }
@@ -509,7 +532,7 @@ void set_checkered_bg(grid* g, xyzq_int p) {
   }
 }
 
-void print_grid(grid* g) {
+void print_grid(grid* g, short ((*get_value)(grid* g, unsigned long pos))) {
   set_fg_colour(BLACK);
   printf("\e[0m");
   printf("\e[2J");
@@ -519,23 +542,23 @@ void print_grid(grid* g) {
         for (int x = 0; x < g->size.x; x++) {
           xyzq_int p = {x, y, z, q};
           set_checkered_bg(g, p);
-          print_field(g, p);
+          print_field(g, p, (*get_value));
         }
       }
     }
   }
 }
 
-void uncover_field(grid* g, xyzq_int p);
+void uncover_field(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos)));
 
-void uncover_field(grid* g, xyzq_int p) {
+void uncover_field(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
   if (g->recusion_depth) {
     unsigned long pos = grid_pos(g, p);
     if (g->mask[pos] == COVERED) {
       g->mask[pos] = UNCOVERED;
       g->uncovered += 1;
       set_checkered_bg(g, p);
-      print_field(g, p);
+      print_field(g, p, (*get_value));
       if (g->grid[pos] == BOMB) {
         g->state = CLICKED_BOMB;
       } else if (g->grid[pos] == 0) {
@@ -556,7 +579,7 @@ void uncover_field(grid* g, xyzq_int p) {
                         xyzq_int p2 = {p.x+x, p.y+y, p.z+z, p.q+q};
                         pos = grid_pos(g, p2);
                         if (g->mask[pos] == COVERED) {
-                          uncover_field(g, p2);
+                          uncover_field(g, p2, (*get_value));
                         }
                       }
                     }
@@ -575,14 +598,14 @@ void uncover_field(grid* g, xyzq_int p) {
   }
 }
 
-short find_empty(grid* g) {
+short find_empty(grid* g, short ((*get_value)(grid* g, unsigned long pos))) {
   for (int q = 0; q < g->size.q; q++) {
     for (int z = 0; z < g->size.z; z++) {
       for (int y = 0; y < g->size.y; y++) {
         for (int x = 0; x < g->size.x; x++) {
           xyzq_int p = {x, y, z, q};
           if (grid_at(g, p) == 0) {
-            uncover_field(g, p);
+            uncover_field(g, p, get_value);
             return 0;
           }
         }
@@ -592,43 +615,83 @@ short find_empty(grid* g) {
   return 1;
 }
 
-short find_biggest_number(grid* g) {
-  short bn = 0;
+xy_int find_biggest_number(grid* g) {
+  int bn = 0;
+  int sn = 0;
   for (int q = 0; q < g->size.q; q++) {
     for (int z = 0; z < g->size.z; z++) {
       for (int y = 0; y < g->size.y; y++) {
         for (int x = 0; x < g->size.x; x++) {
           xyzq_int p = {x, y, z, q};
-          short v = grid_at(g, p);
-          if (v > bn) {
-            bn = v;
+          unsigned long pos = grid_pos(g, p);
+          if (g->grid[pos] > bn) {
+            bn = g->grid[pos];
+          }
+          if (g->delta[pos] < sn && g->delta[pos] < 0) {
+            sn = g->delta[pos];
           }
         }
       }
     }
   }
-  return log10(bn)+1;
+  bn = log10(bn)+1;
+  sn = log10(-sn)+2;
+  return (xy_int){(bn < 2)?2:bn, (sn < 2)?2:sn};
+}
+
+void dec_delta(grid* g, unsigned long pos) {
+  g->delta[pos]--;
+}
+
+void inc_delta(grid* g, unsigned long pos) {
+  g->delta[pos]++;
 }
 
 void mark_field(grid* g, xyzq_int p) {
   if (p.x < g->size.x && p.y < g->size.y && p.z < g->size.z && p.q < g->size.q) {
+    void (*change_delta)(grid* g, unsigned long pos) = NULL;
     unsigned long pos = grid_pos(g, p);
     if (g->mask[pos] > COVERED) {
       g->mask[pos] -= 2; //unflag
       g->flagged -= 1;
+      change_delta = inc_delta;
     } else {
       g->mask[pos] += 2; //flag
       g->flagged += 1;
+      change_delta = dec_delta;
+    }
+    p.x -= 1;
+    p.y -= 1;
+    p.z -= 1;
+    p.q -= 1;
+    for (int q = 0; q < 3; q++) {
+      if (p.q+q >= 0 && p.q+q < g->size.q) {
+        for (int z = 0; z < 3; z++) {
+          if (p.z+z >= 0 && p.z+z < g->size.z) {
+            for (int y = 0; y < 3; y++) {
+              if (p.y+y >= 0 && p.y+y < g->size.y) {
+                for (int x = 0; x < 3; x++) {
+                  if (p.x+x >= 0 && p.x+x < g->size.x) {
+                    xyzq_int p2 = {p.x+x, p.y+y, p.z+z, p.q+q};
+                    pos = grid_pos(g, p2);
+                    (*change_delta)(g, pos);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }
 
-void print_cursor(grid* g, xyzq_int p) {
+void print_cursor(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
   set_bg_colour(PINK);
-  print_field(g, p);
+  print_field(g, p, (*get_value));
 }
 
-void print_area_of_influence(grid* g, xyzq_int p) {
+void print_area_of_influence(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
   p.x -= 1;
   p.y -= 1;
   p.z -= 1;
@@ -656,7 +719,7 @@ void print_area_of_influence(grid* g, xyzq_int p) {
                       set_bg_colour(UNCOVERED_PINK_LIGHT);
                     }
                   }
-                  print_field(g, p2);
+                  print_field(g, p2, (*get_value));
                 }
               }
             }
@@ -667,12 +730,12 @@ void print_area_of_influence(grid* g, xyzq_int p) {
   }
 }
 
-void remove_cursor(grid* g, xyzq_int p) {
+void remove_cursor(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
   set_checkered_bg(g, p);
-  print_field(g, p);
+  print_field(g, p, (*get_value));
 }
 
-void remove_area_of_influence(grid* g, xyzq_int p) {
+void remove_area_of_influence(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
   p.x -= 1;
   p.y -= 1;
   p.z -= 1;
@@ -687,7 +750,7 @@ void remove_area_of_influence(grid* g, xyzq_int p) {
                 if (p.x+x >= 0 && p.x+x < g->size.x) {
                   xyzq_int p2 = {p.x+x, p.y+y, p.z+z, p.q+q};
                   set_checkered_bg(g, p2);
-                  print_field(g, p2);
+                  print_field(g, p2, (*get_value));
                 }
               }
             }
@@ -906,22 +969,15 @@ void print_controls() {
 
 void print_help_menu() {
   move_terminal_cursor_down();
-  move_terminal_cursor_down();
-  printf("-h, -?, --help         Show this menu");
-  move_terminal_cursor_down();
-  printf("-d, --do_random        If true, sets the seed to the current time");
-  move_terminal_cursor_down();
-  printf("-s, --seed             Input seed as unsigned integer");
-  move_terminal_cursor_down();
-  printf("-b, --bombs            Input amount of bombs as unsigned integer");
-  move_terminal_cursor_down();
-  printf("-r, --recursion_depth  The amount of recursion allowed when uncovering fields");
-  move_terminal_cursor_down();
-  printf("-a, --area, --size     Size of the game (must be given as a comma separated list of unsigned integers e.g.: 4, 4, 4, 4)");
-  move_terminal_cursor_down();
-  printf("-i, --show_info        Show info about the current game. Can be set to true or false");
-  move_terminal_cursor_down();
-  printf("-g, --debug            Run in debug mode. Allows editing of field contents");
+  move_terminal_cursor_down(); printf("-h, -?, --help         Show this menu");
+  move_terminal_cursor_down(); printf("-d, --do_random        If true, sets the seed to the current time");
+  move_terminal_cursor_down(); printf("-s, --seed             Input seed as unsigned integer");
+  move_terminal_cursor_down(); printf("-b, --bombs            Input amount of bombs as unsigned integer");
+  move_terminal_cursor_down(); printf("-r, --recursion_depth  The amount of recursion allowed when uncovering fields");
+  move_terminal_cursor_down(); printf("-a, --area, --size     Size of the game (must be given as a comma separated list of unsigned integers e.g.: 4, 4, 4, 4)");
+  move_terminal_cursor_down(); printf("-i, --show_info        Show info about the current game. Can be set to true or false");
+  move_terminal_cursor_down(); printf("-u, --show_delta       Field numbers only show unmarked bombs instead of total. Can be set to true or false");
+  move_terminal_cursor_down(); printf("-g, --debug            Run in debug mode. Allows editing of field contents");
 }
 
 void exit_game_failure() {
@@ -937,6 +993,7 @@ int main(int argc, char** argv) {
   unsigned int bombs = 20;
   unsigned int recursion_depth = 1000;
   short show_info = 1;
+  short show_delta = 1;
   short debug_mode = 0;
   char numbuffer[numbuffer_len];
   numbuffer[0] = '\0';
@@ -1069,12 +1126,30 @@ int main(int argc, char** argv) {
           printf("Capitalisation is irrelevant");
           exit_game_failure();
         }
+      } else if (strcmp(argv[i], "-u") == 0 || strcmp(argv[i], "--show_delta") == 0) {
+        i++;
+        if (i == argc) {
+          printf("No value was provided for option %s!\nPlease provide a boolean value e.g.: false", argv[i-1]);
+          exit_game_failure();
+        }
+        for (int n = 0; n < strlen(argv[i]); n++) {
+          argv[i][n] = tolower(argv[i][n]);
+        }
+        if (strcmp(argv[i], "y") == 0 || strcmp(argv[i], "t") == 0 || strcmp(argv[i], "yes") == 0 || strcmp(argv[i], "true") == 0) {
+          show_delta = 1;
+        } else if (strcmp(argv[i], "n") == 0 || strcmp(argv[i], "f") == 0 || strcmp(argv[i], "no") == 0 || strcmp(argv[i], "false") == 0) {
+          show_delta = 0;
+        } else {
+          printf("Ivalid option for %s %s. Valid otions are: t, f, true, false, y, n, yes, no\n", argv[i-1], argv[i]);
+          printf("Capitalisation is irrelevant");
+          exit_game_failure();
+        }
       } else if (strcmp(argv[i], "-g") == 0 || strcmp(argv[i], "--debug") == 0) {
         debug_mode = 1;
       }
     }
   }
-  option op[11] = {
+  option op[12] = {
     {1, 0, 0, EMPTY, "Size"},
     {1, size.x, 2, UINT, "x"},
     {1, size.y, 2, UINT, "y"},
@@ -1085,23 +1160,32 @@ int main(int argc, char** argv) {
     {1, bombs, 0, UINT, "Bombs"},
     {1, recursion_depth, 0, UINT, "Recusion depth"},
     {1, show_info, 0, BOOL, "Show info"},
+    {1, show_delta, 0, BOOL, "Show deltas"},
     {0, 0, 0, DONE, ""},
   };
 
+  short (*get_value)(grid* g, unsigned long pos) = NULL;
+  if (op[10].value) {
+    get_value = delta_value;
+  } else {
+    get_value = grid_value;
+  }
   grid* g = create_grid(size, op[7].value, (op[5].value)?time(0):op[6].value, op[8].value);
   unsigned int display_width = g->display_width;
-  print_grid(g);
+  print_grid(g, get_value);
   xyzq_int cursor = {0, 0, 0, 0};
-  print_area_of_influence(g, cursor);
-  print_cursor(g, cursor);
-  if (op[9].value) print_info(g);
+  print_area_of_influence(g, cursor, get_value);
+  print_cursor(g, cursor, get_value);
   timer t = {(xy_int){(g->size.z*(g->size.x+1))*g->display_width+2, 7}, g};
   pthread_t timerthread;
-  if (op[9].value) pthread_create(&timerthread, NULL, update_time_elapsed, &t);
+  if (op[9].value) {
+    print_info(g);
+    pthread_create(&timerthread, NULL, update_time_elapsed, &t);
+  }
   while (1) {
     int c = getchar();
-    remove_area_of_influence(g, cursor);
-    remove_cursor(g, cursor);
+    remove_area_of_influence(g, cursor, get_value);
+    //remove_cursor(g, cursor, get_value);
     if (debug_mode) {
       fprintf(stderr, "%d\n", c);
       switch (c) {
@@ -1127,9 +1211,10 @@ int main(int argc, char** argv) {
           numbuffer[numbufferpos] = '\0';
       }
       if (display_width != g->display_width) {
-        display_width = find_biggest_number(g);
+        xy_int bn = find_biggest_number(g);
+        display_width = (op[10].value)?(bn.x > bn.y)?bn.x:bn.y:bn.x;
         g->display_width = display_width;
-        print_grid(g);
+        print_grid(g, get_value);
         if (op[9].value) print_info(g);
         t.pos = (xy_int){(g->size.z*(g->size.x+1))*g->display_width+2, 7};
         fprintf(stderr, "%d\n", g->display_width);
@@ -1185,13 +1270,33 @@ int main(int argc, char** argv) {
         }
         break;
       case 32: //*space*
-        uncover_field(g, cursor);
+        uncover_field(g, cursor, get_value);
         if (op[9].value) print_info(g);
         break;
       case 109: //m
         mark_field(g, cursor);
+        xy_int bn = find_biggest_number(g);
+        display_width = (op[10].value)?(bn.x > bn.y)?bn.x:bn.y:bn.x;
+        g->display_width = display_width;
+        print_grid(g, get_value);
+        t.pos = (xy_int){(g->size.z*(g->size.x+1))*g->display_width+2, 7};
         if (op[9].value) print_info(g);
         break;
+      case 117: //u
+        if (op[10].value) {
+          op[10].value = 0;
+          get_value = grid_value;
+        } else {
+          op[10].value = 1;
+          get_value = delta_value;
+        }
+        bn = find_biggest_number(g);
+        display_width = (op[10].value)?(bn.x > bn.y)?bn.x:bn.y:bn.x;
+        g->display_width = display_width;
+        print_grid(g, get_value);
+        t.pos = (xy_int){(g->size.z*(g->size.x+1))*g->display_width+2, 7};
+        print_grid(g, get_value);
+        if (op[9].value) print_info(g);
       case 112: //p
         if (g->state == RUNNING) {
           g->state = PAUSED;
@@ -1215,14 +1320,14 @@ int main(int argc, char** argv) {
         g->state = RUNNING;
         g->paused = time(0);
         if (op[9].value) pthread_create(&timerthread, NULL, update_time_elapsed, &t);
-        print_grid(g);
+        print_grid(g, get_value);
         if (op[9].value) print_info(g);
         break;
       case 110: //n
         free(g);
         size = (xyzq_int){op[1].value, op[2].value, op[3].value, op[4].value};
         g = create_grid(size, op[7].value, (op[5].value)?time(0):op[6].value, op[8].value);
-        print_grid(g);
+        print_grid(g, get_value);
         if (op[9].value) print_info(g);
         break;
       case 99: //c
@@ -1236,7 +1341,7 @@ int main(int argc, char** argv) {
         getchar();
         g->state = RUNNING;
         g->paused = time(0);
-        print_grid(g);
+        print_grid(g, get_value);
         if (op[9].value) {
           print_info(g);
           pthread_create(&timerthread, NULL, update_time_elapsed, &t);
@@ -1244,7 +1349,7 @@ int main(int argc, char** argv) {
         break;
       case 102: //f
         if (g->uncovered == 0) {
-          if (find_empty(g)) {
+          if (find_empty(g, get_value)) {
             print_str_at((xy_int){t.pos.x, 9}, "\e[0mDidn't find any empty fields");
           }
         }
@@ -1265,8 +1370,8 @@ int main(int argc, char** argv) {
         free(g);
         exit(EXIT_SUCCESS);
     }
-    print_area_of_influence(g, cursor);
-    print_cursor(g, cursor);
+    print_area_of_influence(g, cursor, get_value);
+    print_cursor(g, cursor, get_value);
     if (g->state > PAUSED) {
       g->offset = time(0)-g->paused;
       if (op[9].value) {

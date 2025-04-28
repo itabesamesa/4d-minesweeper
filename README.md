@@ -74,7 +74,7 @@ There are a few extra options you could add, if you don't want to edit the setti
 
 ## Missing features
 
-- [ ] Delta mode: decrement surrounding numbers when bomb is marked
+- [x] Delta mode: decrement surrounding numbers when bomb is marked
 - [x] Big numbers: currently i don't know what will happen if a field has a 3 digit number
 - [ ] Fix timer: currently the timer only updates when you move, idk how to fix it
 
@@ -87,7 +87,12 @@ There are a few extra options you could add, if you don't want to edit the setti
 - [ ] Add scrolling to the 4d field
 - [ ] Make info display on top of the game
 - [ ] Assume field size of 1 when user gives less than 4 integers for option --size
-- [ ] Make field shrink after numbers change
+- [x] Make field shrink after numbers change
+- [ ] Graphical bug in cursor's area of influence when unpausing
+- [ ] Hide field when paused
+- [ ] Start timer on first key press
+- [ ] Add option to reveal field when game is over
+- [ ] Make time minutes and seconds
 
 ## Special thanks
 
