@@ -481,8 +481,9 @@ void print_field(grid* g, xyzq_int p) {
       }
     } else if (g->mask[pos] > COVERED) {
       set_fg_colour(RED);
-      repeat_str_at(p2, ' ', print_buffer-1);
-      printf("🏴%*c", g->display_width-print_buffer-1, ' ');
+      print_wide_str_with_buffer(g, p2, "🏴", print_buffer);
+      //repeat_str_at(p2, ' ', print_buffer-1);
+      //printf("🏴%*c", g->display_width-print_buffer-1, ' ');
     } else {
       repeat_str_at(p2, ' ', g->display_width);
     }
