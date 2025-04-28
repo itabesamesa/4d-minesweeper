@@ -83,10 +83,10 @@ short UNCOVERED_LIGHT[3] = {0xc6, 0xc6, 0xc6};
 short UNCOVERED_DARK[3] = {0xb8, 0xb8, 0xb8};
 short BLACK[3] = {0, 0, 0};
 short PINK[3] = {255, 42, 255};
-short COVERED_PINK_LIGHT[3] = {102, 61, 102};
-short COVERED_PINK_DARK[3] = {77, 46, 77};
-short UNCOVERED_PINK_LIGHT[3] = {179, 107, 179};
-short UNCOVERED_PINK_DARK[3] = {153, 92, 153};
+short COVERED_PINK_LIGHT[3] = {128, 115, 128};
+short COVERED_PINK_DARK[3] = {89, 80, 89};
+short UNCOVERED_PINK_LIGHT[3] = {179, 143, 179};
+short UNCOVERED_PINK_DARK[3] = {153, 122, 153};
 short RED[3] = {255, 0, 0};
 
 int option_offset = 20;
@@ -921,7 +921,7 @@ void print_help_menu() {
   move_terminal_cursor_down();
   printf("-i, --show_info        Show info about the current game. Can be set to true or false");
   move_terminal_cursor_down();
-  printf("-g, --debug            Run in debug mode. Allows editing field contents");
+  printf("-g, --debug            Run in debug mode. Allows editing of field contents");
 }
 
 void exit_game_failure() {

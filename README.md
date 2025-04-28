@@ -33,6 +33,9 @@ You have to find all the mines in a 4 dimensional field. The pink cursor highlig
   Quit game:           q
 </pre>
 
+> [!WARNING]
+> Currently delta mode is not implemented
+
 ## Compiling and running
 
 To compile the program, simply run:
