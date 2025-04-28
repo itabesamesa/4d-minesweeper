@@ -74,7 +74,7 @@ There are a few extra options you could add, if you don't want to edit the setti
 
 ## TODO
 
-- [ ] Add keyboard shortcut for toggling info
+- [x] Add keyboard shortcut for toggling info
 - [ ] Make keyboard shortcuts customisable
 - [ ] Add config file
 - [ ] Write installer
@@ -90,3 +90,6 @@ To GNU for their licence and the code for setting the terminal to noncanonical m
 
 To [EsultaniK](https://github.com/ESultanik) and [Wallabra](https://github.com/wallabra) for writing the code for the Mersenne twister
 [Mtwister](https://github.com/ESultanik/mtwister)
+
+To Julian Schlüntz for creating 4D Minesweeper on steam, the original inspiration for this project
+[4D Minesweeper](https://store.steampowered.com/app/787980/4D_Minesweeper/)
