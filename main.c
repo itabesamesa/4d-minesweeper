@@ -374,7 +374,7 @@ void print_short_with_buffer(grid* g, xy_int p, short n, unsigned int print_buff
   } else {
     unsigned int buffer = g->display_width-(int)log10(n)-1;
     unsigned int half_buffer = buffer/2;
-    fprintf(stderr, "%d %d %d\n", buffer, half_buffer, buffer-half_buffer);
+    //fprintf(stderr, "%d %d %d\n", buffer, half_buffer, buffer-half_buffer);
     printf("\e[%d;%dH", p.y, p.x);
     if (half_buffer) printf("%*c", half_buffer, ' ');
     printf("%d", n);
@@ -447,9 +447,8 @@ void remove_info(grid* g) {
 void* update_time_elapsed(void* args) {
   timer* t = args;
   while (1) {
-    printf("\e[0m");
     print_at(t->pos);
-    printf("Time elapsed: %d seconds", (time(0)-t->g->paused)+t->g->offset);
+    printf("\e[0mTime elapsed: %d seconds", (time(0)-t->g->paused)+t->g->offset);
     //fprintf(stderr, "Time elapsed: %d seconds", (time(0)-t->g->paused)+t->g->offset);
     sleep(1);
   }
