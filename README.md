@@ -69,6 +69,7 @@ There are a few extra options you could add, if you don't want to edit the setti
   -r, --recursion_depth  The amount of recursion allowed when uncovering fields
   -a, --area, --size     Size of the game (must be given as a comma separated list of unsigned integers e.g.: 4, 4, 4, 4)
   -i, --show_info        Show info about the current game. Can be set to true or false
+  -u, --show_delta       Field numbers only show unmarked bombs instead of total. Can be set to true or false
   -g, --debug            Run in debug mode. Allows editing of field contents
 </pre>
 
