@@ -69,3 +69,20 @@ There are a few extra options you could add, if you don't want to edit the setti
 - Delta mode: decrement surrounding numbers when bomb is marked
 - Big numbers: currently i don't know what will happen if a field has a 3 digit number
 - Fix timer: currently the timer only updates when you move, idk how to fix it
+
+## TODO
+
+- [ ] Add keyboard shortcut for toggling info
+- [ ] Make keyboard shortcuts customisable
+- [ ] Add config file
+- [ ] Write installer
+- [ ] Add scrolling to the 4d field
+- [ ] Make info display on top of the game
+
+## Special thanks
+
+To GNU for their licence and the code for setting the terminal to noncanonical mode
+[Noncanonical Mode Example](https://www.gnu.org/software/libc/manual/html_node/Noncanon-Example.html)
+
+To [EsultaniK](https://github.com/ESultanik) and [Wallabra](https://github.com/wallabra) for writing the code for the Mersenne twister
+[Mtwister](https://github.com/ESultanik/mtwister)
