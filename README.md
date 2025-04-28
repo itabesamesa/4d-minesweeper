@@ -53,6 +53,9 @@ To run the program, simply type:
 > [!WARNING]
 > Make sure your terminal is big enough!!!
 
+> [!TIP]
+> When running the program in debug mode, make sure to send the error messages somewhere else by appending `2> [file or terminal]` to the command e.g.: `./4dminesweeper -g 2> /dev/pts/2`
+
 There are a few extra options you could add, if you don't want to edit the settings while the game is running
 
 <pre>
@@ -61,9 +64,9 @@ There are a few extra options you could add, if you don't want to edit the setti
   -s, --seed             Input seed as unsigned integer
   -b, --bombs            Input amount of bombs as unsigned integer
   -r, --recursion_depth  The amount of recursion allowed when uncovering fields
-  -a, --area, --size     Size of the game (must be given as a comma separated list of unsigned integers e.g 4, 4, 4, 4)
+  -a, --area, --size     Size of the game (must be given as a comma separated list of unsigned integers e.g.: 4, 4, 4, 4)
   -i, --show_info        Show info about the current game. Can be set to true or false
-  -g, --debug            Run in debug mode. Allows editing field contents
+  -g, --debug            Run in debug mode. Allows editing of field contents
 </pre>
 
 ## Missing features

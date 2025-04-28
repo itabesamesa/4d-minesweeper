@@ -917,7 +917,7 @@ void print_help_menu() {
   move_terminal_cursor_down();
   printf("-r, --recursion_depth  The amount of recursion allowed when uncovering fields");
   move_terminal_cursor_down();
-  printf("-a, --area, --size     Size of the game (must be given as a comma separated list of unsigned integers e.g 4, 4, 4, 4)");
+  printf("-a, --area, --size     Size of the game (must be given as a comma separated list of unsigned integers e.g.: 4, 4, 4, 4)");
   move_terminal_cursor_down();
   printf("-i, --show_info        Show info about the current game. Can be set to true or false");
   move_terminal_cursor_down();
