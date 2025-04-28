@@ -27,6 +27,7 @@ typedef struct _grid {
   unsigned long bombs;
   unsigned long flagged;
   unsigned int seed;
+  unsigned short display_width;
   int state;
   time_t start;
   time_t paused;
@@ -168,6 +169,10 @@ void grid_place_at(grid* g, xyzq_int p, short v) {
   if (p.x < g->size.x && p.y < g->size.y && p.z < g->size.z && p.q < g->size.q) {
     unsigned long pos = grid_pos(g, p);
     g->grid[pos] = v;
+    int numwidth = log10(v);
+    if (numwidth > 1) {
+      g->display_width = numwidth+1;
+    }
   }
 }
 
@@ -175,6 +180,10 @@ void grid_inc_if_above_at(grid* g, xyzq_int p, short threshold) {
   unsigned long pos = grid_pos(g, p);
   if (g->grid[pos] > threshold) {
     g->grid[pos] += 1;
+    int numwidth = log10(g->grid[pos]);
+    if (numwidth > 1) {
+      g->display_width = numwidth+1;
+    }
   }
 }
 
@@ -275,6 +284,7 @@ grid* create_grid(xyzq_int size, unsigned long bombs, unsigned int seed, unsigne
   g->bombs = bombs;
   g->flagged = 0;
   g->seed = seed;
+  g->display_width = 2;
   g->state = RUNNING;
   g->start = time(0);
   g->paused = time(0);
@@ -333,13 +343,42 @@ void print_str_at(xy_int p, char* s) {
   printf("\e[%d;%dH%s", p.y, p.x, s);
 }
 
+void repeat_str_at(xy_int p, char c, unsigned int amount) {
+  printf("\e[%d;%dH", p.y, p.x);
+  if (amount) printf("%*c", amount, c);
+}
+
 void print_short_at(xy_int p, short n) {
   if (n < 10) {
     int str = 0xff10+n;
     printf("\e[%d;%dH%lc", p.y, p.x, str);
-    //printf("%c", n+48);
   } else {
     printf("\e[%d;%dH%d", p.y, p.x, n);
+  }
+}
+
+void print_wide_str_with_buffer(grid* g, xy_int p, char* s, unsigned int print_buffer) {
+  print_buffer--;
+  repeat_str_at(p, ' ', print_buffer);
+  printf("%s", s);
+  //fprintf(stderr, "%d %d\n", print_buffer, g->display_width-print_buffer-2);
+  if (g->display_width-print_buffer-2) printf("%*c", g->display_width-print_buffer-2, ' ');
+}
+
+void print_short_with_buffer(grid* g, xy_int p, short n, unsigned int print_buffer) {
+  if (n < 10) {
+    int str = 0xff10+n;
+    repeat_str_at(p, ' ', print_buffer-1);
+    printf("%lc", str);
+    if (g->display_width-print_buffer-1) printf("%*c", g->display_width-print_buffer-1, ' ');
+  } else {
+    unsigned int buffer = g->display_width-(int)log10(n)-1;
+    unsigned int half_buffer = buffer/2;
+    fprintf(stderr, "%d %d %d\n", buffer, half_buffer, buffer-half_buffer);
+    printf("\e[%d;%dH", p.y, p.x);
+    if (half_buffer) printf("%*c", half_buffer, ' ');
+    printf("%d", n);
+    if (buffer-half_buffer) printf("%*c", buffer-half_buffer, ' ');
   }
 }
 
@@ -353,7 +392,7 @@ void set_fg_colour(short* c) {
 
 xy_int xyzq_int_to_xy_int(grid* g, xyzq_int p) {
   xy_int p2;
-  p2.x = (p.z*(g->size.x+1)+p.x)*2+1;
+  p2.x = (p.z*(g->size.x+1)+p.x)*g->display_width+1;
   p2.y = p.q*(g->size.y+1)+p.y+1;
   return p2;
 }
@@ -361,7 +400,7 @@ xy_int xyzq_int_to_xy_int(grid* g, xyzq_int p) {
 void print_info(grid* g) {
   printf("\e[0m");
   xy_int p;
-  p.x = (g->size.z*(g->size.x+1))*2+2;
+  p.x = (g->size.z*(g->size.x+1))*g->display_width+2;
   p.y = 2;
   print_str_at(p, "Game info:");
   p.y += 1;
@@ -392,6 +431,19 @@ void print_info(grid* g) {
   }
 }
 
+void remove_info(grid* g) {
+  printf("\e[0m");
+  xy_int p;
+  p.x = (g->size.z*(g->size.x+1))*g->display_width+2;
+  p.y = 2;
+  print_at(p);
+  for (int i = 0; i < 8; i++) {
+    printf("\e[K");
+    p.y++;
+    print_at(p);
+  }
+}
+
 void* update_time_elapsed(void* args) {
   timer* t = args;
   while (1) {
@@ -412,24 +464,28 @@ void print_paused_time_elapsed(grid* g, xy_int pos) {
 
 void print_field(grid* g, xyzq_int p) {
   set_fg_colour(BLACK);
+  unsigned int print_buffer = (g->display_width)/2;
   if (p.x < g->size.x && p.y < g->size.y && p.z < g->size.z && p.q < g->size.q) {
     unsigned long pos = grid_pos(g, p);
     xy_int p2 = xyzq_int_to_xy_int(g, p);
     if (g->mask[pos] == UNCOVERED) {
       if (g->grid[pos] == BOMB) {
-        print_str_at(p2, "💣");
+        print_wide_str_with_buffer(g, p2, "💣", print_buffer);
+        //repeat_str_at(p2, ' ', print_buffer-1);
+        //printf("💣%*c", g->display_width-print_buffer-1, ' ');
       } else {
         if (g->grid[pos]) {
-          print_short_at(p2, g->grid[pos]);
+          print_short_with_buffer(g, p2, g->grid[pos], print_buffer);
         } else {
-          print_str_at(p2, "  ");
+          repeat_str_at(p2, ' ', g->display_width);
         }
       }
     } else if (g->mask[pos] > COVERED) {
       set_fg_colour(RED);
-      print_str_at(p2, "🏴");
+      repeat_str_at(p2, ' ', print_buffer-1);
+      printf("🏴%*c", g->display_width-print_buffer-1, ' ');
     } else {
-      print_str_at(p2, "  ");
+      repeat_str_at(p2, ' ', g->display_width);
     }
   }
 }
@@ -534,6 +590,24 @@ short find_empty(grid* g) {
     }
   }
   return 1;
+}
+
+short find_biggest_number(grid* g) {
+  short bn = 0;
+  for (int q = 0; q < g->size.q; q++) {
+    for (int z = 0; z < g->size.z; z++) {
+      for (int y = 0; y < g->size.y; y++) {
+        for (int x = 0; x < g->size.x; x++) {
+          xyzq_int p = {x, y, z, q};
+          short v = grid_at(g, p);
+          if (v > bn) {
+            bn = v;
+          }
+        }
+      }
+    }
+  }
+  return log10(bn)+1;
 }
 
 void mark_field(grid* g, xyzq_int p) {
@@ -826,6 +900,7 @@ void print_controls() {
   move_terminal_cursor_down(); printf("  Open options:        o");
   move_terminal_cursor_down(); printf("  Start new game:      n");
   move_terminal_cursor_down(); printf("  Print controls:      c");
+  move_terminal_cursor_down(); printf("  Toggle info:         i");
   move_terminal_cursor_down(); printf("  Quit game:           q");
 }
 
@@ -845,6 +920,8 @@ void print_help_menu() {
   printf("-a, --area, --size     Size of the game (must be given as a comma separated list of unsigned integers e.g 4, 4, 4, 4)");
   move_terminal_cursor_down();
   printf("-i, --show_info        Show info about the current game. Can be set to true or false");
+  move_terminal_cursor_down();
+  printf("-g, --debug            Run in debug mode. Allows editing field contents");
 }
 
 void exit_game_failure() {
@@ -860,6 +937,10 @@ int main(int argc, char** argv) {
   unsigned int bombs = 20;
   unsigned int recursion_depth = 1000;
   short show_info = 1;
+  short debug_mode = 0;
+  char numbuffer[numbuffer_len];
+  numbuffer[0] = '\0';
+  unsigned int numbufferpos = 0;
   printf("\e[?25l");
   printf("\e[s");
   set_input_mode();
@@ -875,6 +956,10 @@ int main(int argc, char** argv) {
         exit(EXIT_SUCCESS);
       } else if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--do_random") == 0) {
         i++;
+        if (i == argc) {
+          printf("No value was provided for option %s!\nPlease provide a boolean value e.g.: false", argv[i-1]);
+          exit_game_failure();
+        }
         for (int n = 0; n < strlen(argv[i]); n++) {
           argv[i][n] = tolower(argv[i][n]);
         }
@@ -889,20 +974,36 @@ int main(int argc, char** argv) {
         }
       } else if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--seed") == 0) {
         i++;
+        if (i == argc) {
+          printf("No value was provided for option %s!\nPlease provide an unsigned integer value e.g.: 10", argv[i-1]);
+          exit_game_failure();
+        }
         seed = strtol(argv[i], &endptr, 10);
         if (endptr == argv[i]) {
           printf("No digits were found in option %s %s.\n", argv[i-1], argv[i]);
           exit_game_failure();
+        } else if (seed < 0) {
+          printf("Negative seed value of %d was provided!\nPlease provide a positive integer", seed);
         }
       } else if (strcmp(argv[i], "-b") == 0 || strcmp(argv[i], "--bombs") == 0) {
         i++;
+        if (i == argc) {
+          printf("No value was provided for option %s!\nPlease provide an unsigned integer e.g.: 20", argv[i-1]);
+          exit_game_failure();
+        }
         bombs = strtol(argv[i], &endptr, 10);
         if (endptr == argv[i]) {
           printf("No digits were found in option %s %s.\n", argv[i-1], argv[i]);
           exit_game_failure();
+        } else if (bombs < 0) {
+          printf("Negative bomb amount of %d was provided!\nPlease provide a positive integer", bombs);
         }
       } else if (strcmp(argv[i], "-r") == 0 || strcmp(argv[i], "--recursion_depth") == 0) {
         i++;
+        if (i == argc) {
+          printf("No value was provided for option %s!\nPlease provide a boolean value e.g.: false", argv[i-1]);
+          exit_game_failure();
+        }
         recursion_depth = strtol(argv[i], &endptr, 10);
         if (endptr == argv[i]) {
           printf("No digits were found in option %s %s.\n", argv[i-1], argv[i]);
@@ -919,11 +1020,17 @@ int main(int argc, char** argv) {
         if (endptr == argv[i]) {
           printf("No digits were found in option %s %s for size x.\n", og, argv[i]);
           exit_game_failure();
+        } else if (size.x < 0) {
+          printf("Negative size x of %d was provided!\nPlease provide a positive integer", size.x);
+          exit_game_failure();
         }
         i++;
         size.y = strtol(argv[i], &endptr, 10);
         if (endptr == argv[i]) {
           printf("No digits were found in option %s %s for size y.\n", og, argv[i]);
+          exit_game_failure();
+        } else if (size.y < 0) {
+          printf("Negative size y of %d was provided!\nPlease provide a positive integer", size.y);
           exit_game_failure();
         }
         i++;
@@ -931,15 +1038,25 @@ int main(int argc, char** argv) {
         if (endptr == argv[i]) {
           printf("No digits were found in option %s %s for size z.\n", og, argv[i]);
           exit_game_failure();
+        } else if (size.z < 0) {
+          printf("Negative size z of %d was provided!\nPlease provide a positive integer", size.z);
+          exit_game_failure();
         }
         i++;
         size.q = strtol(argv[i], &endptr, 10);
         if (endptr == argv[i]) {
           printf("No digits were found in option %s %s for size q.\n", og, argv[i]);
           exit_game_failure();
+        } else if (size.q < 0) {
+          printf("Negative size q of %d was provided!\nPlease provide a positive integer", size.q);
+          exit_game_failure();
         }
       } else if (strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--show_info") == 0) {
         i++;
+        if (i == argc) {
+          printf("No value was provided for option %s!\nPlease provide a boolean value e.g.: false", argv[i-1]);
+          exit_game_failure();
+        }
         for (int n = 0; n < strlen(argv[i]); n++) {
           argv[i][n] = tolower(argv[i][n]);
         }
@@ -952,6 +1069,8 @@ int main(int argc, char** argv) {
           printf("Capitalisation is irrelevant");
           exit_game_failure();
         }
+      } else if (strcmp(argv[i], "-g") == 0 || strcmp(argv[i], "--debug") == 0) {
+        debug_mode = 1;
       }
     }
   }
@@ -970,19 +1089,52 @@ int main(int argc, char** argv) {
   };
 
   grid* g = create_grid(size, op[7].value, (op[5].value)?time(0):op[6].value, op[8].value);
+  unsigned int display_width = g->display_width;
   print_grid(g);
   xyzq_int cursor = {0, 0, 0, 0};
   print_area_of_influence(g, cursor);
   print_cursor(g, cursor);
   if (op[9].value) print_info(g);
-  timer t = {(xy_int){(g->size.z*(g->size.x+1))*2+2, 7}, g};
+  timer t = {(xy_int){(g->size.z*(g->size.x+1))*g->display_width+2, 7}, g};
   pthread_t timerthread;
   if (op[9].value) pthread_create(&timerthread, NULL, update_time_elapsed, &t);
   while (1) {
     int c = getchar();
-    //print_short_at((xy_int){100, 10}, c);
     remove_area_of_influence(g, cursor);
     remove_cursor(g, cursor);
+    if (debug_mode) {
+      fprintf(stderr, "%d\n", c);
+      switch (c) {
+        case 48: //numbers 0-9
+        case 49:
+        case 50:
+        case 51:
+        case 52:
+        case 53:
+        case 54:
+        case 55:
+        case 56:
+        case 57:
+          if (numbufferpos < numbuffer_len-1) {
+            numbuffer[numbufferpos] = c;
+            numbufferpos++;
+            numbuffer[numbufferpos] = '\0';
+            grid_place_at(g, cursor, strtol(numbuffer, (char**)NULL, 10));
+          }
+          break;
+        default:
+          numbufferpos = 0;
+          numbuffer[numbufferpos] = '\0';
+      }
+      if (display_width != g->display_width) {
+        display_width = find_biggest_number(g);
+        g->display_width = display_width;
+        print_grid(g);
+        if (op[9].value) print_info(g);
+        t.pos = (xy_int){(g->size.z*(g->size.x+1))*g->display_width+2, 7};
+        fprintf(stderr, "%d\n", g->display_width);
+      }
+    }
     switch (c) {
       case 68: //right arrow
       case 104: //h
@@ -1084,15 +1236,28 @@ int main(int argc, char** argv) {
         getchar();
         g->state = RUNNING;
         g->paused = time(0);
-        if (op[9].value) pthread_create(&timerthread, NULL, update_time_elapsed, &t);
         print_grid(g);
-        if (op[9].value) print_info(g);
+        if (op[9].value) {
+          print_info(g);
+          pthread_create(&timerthread, NULL, update_time_elapsed, &t);
+        }
         break;
       case 102: //f
         if (g->uncovered == 0) {
           if (find_empty(g)) {
             print_str_at((xy_int){t.pos.x, 9}, "\e[0mDidn't find any empty fields");
           }
+        }
+        break;
+      case 105: //i
+        if (op[9].value) {
+          op[9].value = 0;
+          pthread_cancel(timerthread);
+          remove_info(g);
+        } else {
+          op[9].value = 1;
+          print_info(g);
+          pthread_create(&timerthread, NULL, update_time_elapsed, &t);
         }
         break;
       case 113: //q

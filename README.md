@@ -29,6 +29,7 @@ You have to find all the mines in a 4 dimensional field. The pink cursor highlig
   Open options:        o
   Start new game:      n
   Print controls:      c
+  Toggle info:         i
   Quit game:           q
 </pre>
 
@@ -62,13 +63,14 @@ There are a few extra options you could add, if you don't want to edit the setti
   -r, --recursion_depth  The amount of recursion allowed when uncovering fields
   -a, --area, --size     Size of the game (must be given as a comma separated list of unsigned integers e.g 4, 4, 4, 4)
   -i, --show_info        Show info about the current game. Can be set to true or false
+  -g, --debug            Run in debug mode. Allows editing field contents
 </pre>
 
 ## Missing features
 
-- Delta mode: decrement surrounding numbers when bomb is marked
-- Big numbers: currently i don't know what will happen if a field has a 3 digit number
-- Fix timer: currently the timer only updates when you move, idk how to fix it
+- [ ] Delta mode: decrement surrounding numbers when bomb is marked
+- [x] Big numbers: currently i don't know what will happen if a field has a 3 digit number
+- [ ] Fix timer: currently the timer only updates when you move, idk how to fix it
 
 ## TODO
 
@@ -78,6 +80,8 @@ There are a few extra options you could add, if you don't want to edit the setti
 - [ ] Write installer
 - [ ] Add scrolling to the 4d field
 - [ ] Make info display on top of the game
+- [ ] Assume field size of 1 when user gives less than 4 integers for option --size
+- [ ] Make field shrink after numbers change
 
 ## Special thanks
 
