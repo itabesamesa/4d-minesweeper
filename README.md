@@ -21,7 +21,7 @@ You have to find all the mines in a 4 dimensional field. The pink cursor highlig
   Move left in z:        a, ctrl-h
   Move up in q:          w, ctrl-k
   Move down in y:        s, ctrl-j
-  Mark bomb:             m
+  Mark bomb:             m, e
   Uncover field:         space
   Find empty field:      f
   Turn on delta mode:    u
@@ -96,6 +96,8 @@ There are a few extra options you could add, if you don't want to edit the setti
 - [ ] Make uncover field work better in delta mode
 - [x] Show 0 in delta mode when there are covered fields in its area of influence
 - [ ] Find better colours for the cursor. I will not accept to any colour other than pink!
+- [ ] Sometimes field turns wide randomly
+- [ ] Timer disappears after new game
 
 ## Special thanks
 

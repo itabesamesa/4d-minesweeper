@@ -1212,7 +1212,7 @@ void print_controls() {
   move_terminal_cursor_down(); printf("  Move left in z:        a, ctrl-h");
   move_terminal_cursor_down(); printf("  Move up in q:          w, ctrl-k");
   move_terminal_cursor_down(); printf("  Move down in y:        s, ctrl-j");
-  move_terminal_cursor_down(); printf("  Mark bomb:             m");
+  move_terminal_cursor_down(); printf("  Mark bomb:             m, e");
   move_terminal_cursor_down(); printf("  Uncover field:         \e[3mspace\e[0m");
   move_terminal_cursor_down(); printf("  Find empty field:      f");
   move_terminal_cursor_down(); printf("  Turn on delta mode:    u");
@@ -1543,6 +1543,7 @@ int main(int argc, char** argv) {
           if (op[9].value) print_info(g);
         }
         break;
+      case 101: //e
       case 109: //m
         if (g->state != PAUSED) {
           mark_field(g, cursor);
@@ -1639,6 +1640,8 @@ int main(int argc, char** argv) {
         free(g);
         size = (xyzq_int){op[1].value, op[2].value, op[3].value, op[4].value};
         g = create_grid(size, op[7].value, (op[5].value)?time(0):op[6].value, op[8].value);
+        print_cursor_func = print_cursor_all;
+        remove_cursor_func = remove_area_of_influence;
         printf("\e[0m");
         printf("\e[2J");
         print_grid(g, get_value);
