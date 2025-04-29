@@ -54,9 +54,6 @@ To run the program, simply type:
 > [!WARNING]
 > Make sure your terminal is big enough!!!
 
-> [!TIP]
-> When running the program in debug mode, make sure to send the error messages somewhere else by appending `2> [file or terminal]` to the command e.g.: `./4dminesweeper -g 2> /dev/pts/2`
-
 There are a few extra options you could add, if you don't want to edit the settings while the game is running
 
 <pre>
@@ -70,6 +67,9 @@ There are a few extra options you could add, if you don't want to edit the setti
   -u, --show_delta       Field numbers only show unmarked bombs instead of total. Can be set to true or false
   -g, --debug            Run in debug mode. Allows editing of field contents
 </pre>
+
+> [!TIP]
+> When running the program in debug mode, make sure to send the error messages somewhere else by appending `2> [file or terminal]` to the command e.g.: `./4dminesweeper -g 2> /dev/pts/2`
 
 ## Missing features
 
@@ -105,5 +105,4 @@ To GNU for their licence and the code for setting the terminal to noncanonical m
 To [EsultaniK](https://github.com/ESultanik) and [Wallabra](https://github.com/wallabra) for writing the code for the Mersenne twister
 [Mtwister](https://github.com/ESultanik/mtwister)
 
-To Julian Schlüntz for creating 4D Minesweeper on steam, the original inspiration for this project
-[4D Minesweeper](https://store.steampowered.com/app/787980/4D_Minesweeper/)
+To Julian Schlüntz for creating [4D Minesweeper](https://store.steampowered.com/app/787980/4D_Minesweeper/) on steam, the original inspiration for this project
