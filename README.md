@@ -13,24 +13,25 @@ You have to find all the mines in a 4 dimensional field. The pink cursor highlig
 ### Controls
 
 <pre>
-  Move right in x:     right arrow, l
-  Move left in x:      left arrow, h
-  Move up in y:        up arrow, k
-  Move down in y:      down arrow, j
-  Move right in z:     d, ctrl-l
-  Move left in z:      a, ctrl-h
-  Move up in q:        w, ctrl-k
-  Move down in y:      s, ctrl-j
-  Mark bomb:           m
-  Uncover field:       space
-  Find empty field:    f
-  Turn on delta mode:  u
-  Pause game:          p
-  Open options:        o
-  Start new game:      n
-  Print controls:      c
-  Toggle info:         i
-  Quit game:           q
+  Move right in x:       right arrow, l
+  Move left in x:        left arrow, h
+  Move up in y:          up arrow, k
+  Move down in y:        down arrow, j
+  Move right in z:       d, ctrl-l
+  Move left in z:        a, ctrl-h
+  Move up in q:          w, ctrl-k
+  Move down in y:        s, ctrl-j
+  Mark bomb:             m
+  Uncover field:         space
+  Find empty field:      f
+  Turn on delta mode:    u
+  Give up/reveal field:  g
+  Pause game:            p
+  Open options:          o
+  Start new game:        n
+  Print controls:        c
+  Toggle info:           i
+  Quit game:             q
 </pre>
 
 ## Compiling and running
@@ -90,10 +91,11 @@ There are a few extra options you could add, if you don't want to edit the setti
 - [ ] Graphical bug with timer, prints to random x position sometimes
 - [x] Hide field when paused
 - [ ] Start timer on first key press
-- [ ] Add option to reveal field when game is over
+- [x] Add option to reveal field when game is over
 - [ ] Make time minutes and seconds
 - [ ] Make uncover field work better in delta mode
 - [x] Show 0 in delta mode when there are covered fields in its area of influence
+- [ ] Find better colours for the cursor. I will not accept to any colour other than pink!
 
 ## Special thanks
 

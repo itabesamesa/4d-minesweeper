@@ -88,8 +88,8 @@ short BLACK[3] = {0, 0, 0};
 short PINK[3] = {255, 42, 255};
 short COVERED_PINK_LIGHT[3] = {128, 115, 128};
 short COVERED_PINK_DARK[3] = {89, 80, 89};
-short UNCOVERED_PINK_LIGHT[3] = {179, 143, 179};
-short UNCOVERED_PINK_DARK[3] = {153, 122, 153};
+short UNCOVERED_PINK_LIGHT[3] = {179, 161, 179};
+short UNCOVERED_PINK_DARK[3] = {153, 138, 153};
 short PAUSED_PINK_LIGHT[3] = {77, 69, 77};
 short PAUSED_PINK_DARK[3] = {64, 57, 64};
 short RED[3] = {255, 0, 0};
@@ -477,7 +477,7 @@ void print_paused_time_elapsed(grid* g, xy_int pos) {
 }
 
 void remove_grid(grid* g) {
-  xy_int bottom_right_corner = xyzq_int_to_xy_int(g, g->size);
+  xy_int bottom_right_corner = xyzq_int_to_xy_int(g, (xyzq_int){g->size.x-1, g->size.y-1, g->size.z-1, g->size.q-1});
   for (int i = 0; i < bottom_right_corner.y; i++) {
     printf("\e[%d;%dH\e[1K", i, bottom_right_corner.x);
   }
@@ -617,6 +617,49 @@ void print_grid_paused(grid* g) {
           xyzq_int p = {x, y, z, q};
           set_checkered_bg_paused(g, p);
           print_field_paused(g, p);
+        }
+      }
+    }
+  }
+}
+
+void print_field_uncovered(grid* g, xyzq_int p, unsigned long pos, short ((*get_value)(grid* g, unsigned long pos))) {
+  set_fg_colour(BLACK);
+  unsigned int print_buffer = (g->display_width)/2;
+  if (p.x < g->size.x && p.y < g->size.y && p.z < g->size.z && p.q < g->size.q) {
+    xy_int p2 = xyzq_int_to_xy_int(g, p);
+    if (g->mask[pos] > COVERED) {
+      if (g->grid[pos] != BOMB) {
+        set_bg_colour(RED);
+      }
+      print_wide_str_with_buffer(g, p2, "🏴", print_buffer);
+    } else {
+      if (g->grid[pos] == BOMB) {
+        print_wide_str_with_buffer(g, p2, "💣", print_buffer);
+      } else {
+        if (get_value(g, pos) != 0) {
+          print_short_with_buffer(g, p2, (*get_value)(g, pos), print_buffer);
+        } else {
+          repeat_str_at(p2, ' ', g->display_width);
+        }
+      }
+    }
+  }
+}
+
+void print_grid_uncovered(grid* g, short ((*get_value)(grid* g, unsigned long pos))) {
+  set_fg_colour(BLACK);
+  printf("\e[0m");
+  remove_grid(g);
+  for (int q = 0; q < g->size.q; q++) {
+    for (int z = 0; z < g->size.z; z++) {
+      for (int y = 0; y < g->size.y; y++) {
+        for (int x = 0; x < g->size.x; x++) {
+          xyzq_int p = {x, y, z, q};
+          unsigned long pos = grid_pos(g, p);
+          if (g->mask[pos] == COVERED) g->mask[pos] = UNCOVERED;
+          set_checkered_bg(g, p);
+          print_field_uncovered(g, p, pos, (*get_value));
         }
       }
     }
@@ -912,6 +955,69 @@ void remove_area_of_influence_paused(grid* g, xyzq_int p, short ((*get_value)(gr
   }
 }
 
+void print_area_of_influence_uncovered(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
+  p.x -= 1;
+  p.y -= 1;
+  p.z -= 1;
+  p.q -= 1;
+  for (int q = 0; q < 3; q++) {
+    if (p.q+q >= 0 && p.q+q < g->size.q) {
+      for (int z = 0; z < 3; z++) {
+        if (p.z+z >= 0 && p.z+z < g->size.z) {
+          for (int y = 0; y < 3; y++) {
+            if (p.y+y >= 0 && p.y+y < g->size.y) {
+              for (int x = 0; x < 3; x++) {
+                if (p.x+x >= 0 && p.x+x < g->size.x) {
+                  xyzq_int p2 = {p.x+x, p.y+y, p.z+z, p.q+q};
+                  unsigned long pos = grid_pos(g, p2);
+                  if ((p2.x+p2.y%2)%2) {
+                    set_bg_colour(UNCOVERED_PINK_DARK);
+                  } else {
+                    set_bg_colour(UNCOVERED_PINK_LIGHT);
+                  }
+                  print_field_uncovered(g, p2, pos, get_value);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+void print_cursor_uncovered_all(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
+  print_area_of_influence_uncovered(g, p, get_value);
+  print_cursor(g, p, get_value);
+}
+
+void remove_area_of_influence_uncovered(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
+  p.x -= 1;
+  p.y -= 1;
+  p.z -= 1;
+  p.q -= 1;
+  for (int q = 0; q < 3; q++) {
+    if (p.q+q >= 0 && p.q+q < g->size.q) {
+      for (int z = 0; z < 3; z++) {
+        if (p.z+z >= 0 && p.z+z < g->size.z) {
+          for (int y = 0; y < 3; y++) {
+            if (p.y+y >= 0 && p.y+y < g->size.y) {
+              for (int x = 0; x < 3; x++) {
+                if (p.x+x >= 0 && p.x+x < g->size.x) {
+                  xyzq_int p2 = {p.x+x, p.y+y, p.z+z, p.q+q};
+                  set_checkered_bg(g, p2);
+                  print_field_uncovered(g, p2, grid_pos(g, p2), get_value);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+
 void inc_option(option* op, int i, int dif) {
   switch (op[i].type) {
     case BOOL:
@@ -1098,24 +1204,25 @@ grid* print_settings(option* op, grid* g) {
 
 void print_controls() {
   printf("Controls:");
-  move_terminal_cursor_down(); printf("  Move right in x:     \e[3mright arrow\e[0m, l");
-  move_terminal_cursor_down(); printf("  Move left in x:      \e[3mleft arrow\e[0m, h");
-  move_terminal_cursor_down(); printf("  Move up in y:        \e[3mup arrow\e[0m, k");
-  move_terminal_cursor_down(); printf("  Move down in y:      \e[3mdown arrow\e[0m, j");
-  move_terminal_cursor_down(); printf("  Move right in z:     d, ctrl-l");
-  move_terminal_cursor_down(); printf("  Move left in z:      a, ctrl-h");
-  move_terminal_cursor_down(); printf("  Move up in q:        w, ctrl-k");
-  move_terminal_cursor_down(); printf("  Move down in y:      s, ctrl-j");
-  move_terminal_cursor_down(); printf("  Mark bomb:           m");
-  move_terminal_cursor_down(); printf("  Uncover field:       \e[3mspace\e[0m");
-  move_terminal_cursor_down(); printf("  Find empty field:    f");
-  move_terminal_cursor_down(); printf("  Turn on delta mode:  u");
-  move_terminal_cursor_down(); printf("  Pause game:          p");
-  move_terminal_cursor_down(); printf("  Open options:        o");
-  move_terminal_cursor_down(); printf("  Start new game:      n");
-  move_terminal_cursor_down(); printf("  Print controls:      c");
-  move_terminal_cursor_down(); printf("  Toggle info:         i");
-  move_terminal_cursor_down(); printf("  Quit game:           q");
+  move_terminal_cursor_down(); printf("  Move right in x:       \e[3mright arrow\e[0m, l");
+  move_terminal_cursor_down(); printf("  Move left in x:        \e[3mleft arrow\e[0m, h");
+  move_terminal_cursor_down(); printf("  Move up in y:          \e[3mup arrow\e[0m, k");
+  move_terminal_cursor_down(); printf("  Move down in y:        \e[3mdown arrow\e[0m, j");
+  move_terminal_cursor_down(); printf("  Move right in z:       d, ctrl-l");
+  move_terminal_cursor_down(); printf("  Move left in z:        a, ctrl-h");
+  move_terminal_cursor_down(); printf("  Move up in q:          w, ctrl-k");
+  move_terminal_cursor_down(); printf("  Move down in y:        s, ctrl-j");
+  move_terminal_cursor_down(); printf("  Mark bomb:             m");
+  move_terminal_cursor_down(); printf("  Uncover field:         \e[3mspace\e[0m");
+  move_terminal_cursor_down(); printf("  Find empty field:      f");
+  move_terminal_cursor_down(); printf("  Turn on delta mode:    u");
+  move_terminal_cursor_down(); printf("  Give up/reveal field:  g");
+  move_terminal_cursor_down(); printf("  Pause game:            p");
+  move_terminal_cursor_down(); printf("  Open options:          o");
+  move_terminal_cursor_down(); printf("  Start new game:        n");
+  move_terminal_cursor_down(); printf("  Print controls:        c");
+  move_terminal_cursor_down(); printf("  Toggle info:           i");
+  move_terminal_cursor_down(); printf("  Quit game:             q");
 }
 
 void print_help_menu() {
@@ -1153,6 +1260,7 @@ int main(int argc, char** argv) {
   printf("\e[s");
   set_input_mode();
   setlocale(LC_CTYPE, "");
+  printf("\e[2J");
   if (argc > 1) {
     char* endptr;
     for (int i = 1; i < argc; i++) {
@@ -1373,6 +1481,7 @@ int main(int argc, char** argv) {
         xy_int bn = find_biggest_number(g);
         display_width = (op[10].value)?(bn.x > bn.y)?bn.x:bn.y:bn.x;
         g->display_width = display_width;
+        printf("\e[2J");
         print_grid(g, get_value);
         if (op[9].value) print_info(g);
         t.pos = (xy_int){(g->size.z*(g->size.x+1))*g->display_width+2, 7};
@@ -1439,9 +1548,17 @@ int main(int argc, char** argv) {
           mark_field(g, cursor);
           xy_int bn = find_biggest_number(g);
           display_width = (op[10].value)?(bn.x > bn.y)?bn.x:bn.y:bn.x;
-          g->display_width = display_width;
-          print_grid(g, get_value);
-          t.pos = (xy_int){(g->size.z*(g->size.x+1))*g->display_width+2, 7};
+          if (g->display_width != display_width) {
+            g->display_width = display_width;
+            printf("\e[0m");
+            printf("\e[2J");
+            t.pos = (xy_int){(g->size.z*(g->size.x+1))*g->display_width+2, 7};
+          }
+          if (g->state != CLICKED_BOMB) {
+            print_grid(g, get_value);
+          } else {
+            print_grid_uncovered(g, get_value);
+          }
           if (op[9].value) print_info(g);
         }
         break;
@@ -1455,10 +1572,28 @@ int main(int argc, char** argv) {
         }
         xy_int bn = find_biggest_number(g);
         display_width = (op[10].value)?(bn.x > bn.y)?bn.x:bn.y:bn.x;
-        g->display_width = display_width;
-        t.pos = (xy_int){(g->size.z*(g->size.x+1))*g->display_width+2, 7};
+        if (g->display_width != display_width) {
+          g->display_width = display_width;
+          printf("\e[0m");
+          printf("\e[2J");
+          t.pos = (xy_int){(g->size.z*(g->size.x+1))*g->display_width+2, 7};
+        }
         print_grid(g, get_value);
         if (op[9].value) print_info(g);
+        break;
+      case 103: //g
+        if (g->state != PAUSED && g->state != WIN) {
+          g->state = CLICKED_BOMB;
+          g->offset += time(0)-g->paused;
+          if (op[9].value) {
+            pthread_cancel(timerthread);
+            print_paused_time_elapsed(g, t.pos);
+          }
+          print_cursor_func = print_cursor_uncovered_all;
+          remove_cursor_func = remove_area_of_influence_uncovered;
+          print_grid_uncovered(g, get_value);
+          if (op[9].value) print_info(g);
+        }
         break;
       case 112: {//p
         if (g->state == RUNNING) {
@@ -1504,6 +1639,8 @@ int main(int argc, char** argv) {
         free(g);
         size = (xyzq_int){op[1].value, op[2].value, op[3].value, op[4].value};
         g = create_grid(size, op[7].value, (op[5].value)?time(0):op[6].value, op[8].value);
+        printf("\e[0m");
+        printf("\e[2J");
         print_grid(g, get_value);
         if (op[9].value) print_info(g);
         break;
