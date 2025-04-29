@@ -82,12 +82,16 @@ short COVERED_LIGHT[3] = {0x66, 0x66, 0x66};
 short COVERED_DARK[3] = {0x3b, 0x3b, 0x3b};
 short UNCOVERED_LIGHT[3] = {0xc6, 0xc6, 0xc6};
 short UNCOVERED_DARK[3] = {0xb8, 0xb8, 0xb8};
+short PAUAED_LIGHT[3] = {51, 51, 51};
+short PAUSED_DARK[3] = {38, 38, 38};
 short BLACK[3] = {0, 0, 0};
 short PINK[3] = {255, 42, 255};
 short COVERED_PINK_LIGHT[3] = {128, 115, 128};
 short COVERED_PINK_DARK[3] = {89, 80, 89};
 short UNCOVERED_PINK_LIGHT[3] = {179, 143, 179};
 short UNCOVERED_PINK_DARK[3] = {153, 122, 153};
+short PAUSED_PINK_LIGHT[3] = {77, 69, 77};
+short PAUSED_PINK_DARK[3] = {64, 57, 64};
 short RED[3] = {255, 0, 0};
 
 int option_offset = 20;
@@ -378,14 +382,10 @@ void print_short_with_buffer(grid* g, xy_int p, short n, unsigned int print_buff
     printf("%d", n);
     if (buffer-half_buffer) printf("%*c", buffer-half_buffer, ' ');
   } else if (n < 10) {
-    if (n == 0) {
-      repeat_str_at(p, ' ', g->display_width);
-    } else {
-      int str = 0xff10+n;
-      repeat_str_at(p, ' ', print_buffer-1);
-      printf("%lc", str);
-      if (g->display_width-print_buffer-1) printf("%*c", g->display_width-print_buffer-1, ' ');
-    }
+    int str = 0xff10+n;
+    repeat_str_at(p, ' ', print_buffer-1);
+    printf("%lc", str);
+    if (g->display_width-print_buffer-1) printf("%*c", g->display_width-print_buffer-1, ' ');
   } else {
     unsigned int buffer = g->display_width-(int)log10(n)-1;
     unsigned int half_buffer = buffer/2;
@@ -476,6 +476,13 @@ void print_paused_time_elapsed(grid* g, xy_int pos) {
   printf("Time elapsed: %d seconds", g->offset);
 }
 
+void remove_grid(grid* g) {
+  xy_int bottom_right_corner = xyzq_int_to_xy_int(g, g->size);
+  for (int i = 0; i < bottom_right_corner.y; i++) {
+    printf("\e[%d;%dH\e[1K", i, bottom_right_corner.x);
+  }
+}
+
 short grid_value(grid* g, unsigned long pos) {
   return g->grid[pos];
 }
@@ -484,7 +491,35 @@ short delta_value(grid* g, unsigned long pos) {
   return g->delta[pos];
 }
 
-void print_field(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
+short check_around_if_covered(grid* g, xyzq_int p) {
+  p.x -= 1;
+  p.y -= 1;
+  p.z -= 1;
+  p.q -= 1;
+  for (int q = 0; q < 3; q++) {
+    if (p.q+q >= 0 && p.q+q < g->size.q) {
+      for (int z = 0; z < 3; z++) {
+        if (p.z+z >= 0 && p.z+z < g->size.z) {
+          for (int y = 0; y < 3; y++) {
+            if (p.y+y >= 0 && p.y+y < g->size.y) {
+              for (int x = 0; x < 3; x++) {
+                if (p.x+x >= 0 && p.x+x < g->size.x) {
+                  unsigned long pos = grid_pos(g, (xyzq_int){p.x+x, p.y+y, p.z+z, p.q+q});
+                  if (g->mask[pos] == COVERED) {
+                    return 1;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  return 0;
+}
+
+void print_field(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos)), short print_zero) {
   set_fg_colour(BLACK);
   unsigned int print_buffer = (g->display_width)/2;
   if (p.x < g->size.x && p.y < g->size.y && p.z < g->size.z && p.q < g->size.q) {
@@ -496,10 +531,18 @@ void print_field(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long
         //repeat_str_at(p2, ' ', print_buffer-1);
         //printf("💣%*c", g->display_width-print_buffer-1, ' ');
       } else {
-        if (g->grid[pos] != 0) {
+        if (get_value(g, pos) != 0) {
           print_short_with_buffer(g, p2, (*get_value)(g, pos), print_buffer);
         } else {
-          repeat_str_at(p2, ' ', g->display_width);
+          if (print_zero) {
+            if (check_around_if_covered(g, p)) {
+              print_short_with_buffer(g, p2, (*get_value)(g, pos), print_buffer);
+            } else {
+              repeat_str_at(p2, ' ', g->display_width);
+            }
+          } else {
+            repeat_str_at(p2, ' ', g->display_width);
+          }
         }
       }
     } else if (g->mask[pos] > COVERED) {
@@ -535,14 +578,45 @@ void set_checkered_bg(grid* g, xyzq_int p) {
 void print_grid(grid* g, short ((*get_value)(grid* g, unsigned long pos))) {
   set_fg_colour(BLACK);
   printf("\e[0m");
-  printf("\e[2J");
+  remove_grid(g);
   for (int q = 0; q < g->size.q; q++) {
     for (int z = 0; z < g->size.z; z++) {
       for (int y = 0; y < g->size.y; y++) {
         for (int x = 0; x < g->size.x; x++) {
           xyzq_int p = {x, y, z, q};
           set_checkered_bg(g, p);
-          print_field(g, p, (*get_value));
+          print_field(g, p, (*get_value), 1);
+        }
+      }
+    }
+  }
+}
+
+void print_field_paused(grid* g, xyzq_int p) {
+  repeat_str_at(xyzq_int_to_xy_int(g, p), ' ', g->display_width);
+}
+
+void set_checkered_bg_paused(grid* g, xyzq_int p) {
+  if (p.x < g->size.x && p.y < g->size.y && p.z < g->size.z && p.q < g->size.q) {
+    if ((p.x+p.y%2)%2) {
+      set_bg_colour(PAUSED_DARK);
+    } else {
+      set_bg_colour(PAUAED_LIGHT);
+    }
+  }
+}
+
+void print_grid_paused(grid* g) {
+  set_fg_colour(BLACK);
+  printf("\e[0m");
+  remove_grid(g);
+  for (int q = 0; q < g->size.q; q++) {
+    for (int z = 0; z < g->size.z; z++) {
+      for (int y = 0; y < g->size.y; y++) {
+        for (int x = 0; x < g->size.x; x++) {
+          xyzq_int p = {x, y, z, q};
+          set_checkered_bg_paused(g, p);
+          print_field_paused(g, p);
         }
       }
     }
@@ -558,7 +632,7 @@ void uncover_field(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned lo
       g->mask[pos] = UNCOVERED;
       g->uncovered += 1;
       set_checkered_bg(g, p);
-      print_field(g, p, (*get_value));
+      print_field(g, p, (*get_value), 0);
       if (g->grid[pos] == BOMB) {
         g->state = CLICKED_BOMB;
       } else if (g->grid[pos] == 0) {
@@ -688,7 +762,7 @@ void mark_field(grid* g, xyzq_int p) {
 
 void print_cursor(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
   set_bg_colour(PINK);
-  print_field(g, p, (*get_value));
+  print_field(g, p, (*get_value), 1);
 }
 
 void print_area_of_influence(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
@@ -719,7 +793,7 @@ void print_area_of_influence(grid* g, xyzq_int p, short ((*get_value)(grid* g, u
                       set_bg_colour(UNCOVERED_PINK_LIGHT);
                     }
                   }
-                  print_field(g, p2, (*get_value));
+                  print_field(g, p2, (*get_value), 1);
                 }
               }
             }
@@ -730,10 +804,15 @@ void print_area_of_influence(grid* g, xyzq_int p, short ((*get_value)(grid* g, u
   }
 }
 
-void remove_cursor(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
-  set_checkered_bg(g, p);
-  print_field(g, p, (*get_value));
+void print_cursor_all(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
+  print_area_of_influence(g, p, get_value);
+  print_cursor(g, p, get_value);
 }
+
+/*void remove_cursor(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
+  set_checkered_bg(g, p);
+  print_field(g, p, (*get_value), 1);
+}*/
 
 void remove_area_of_influence(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
   p.x -= 1;
@@ -750,7 +829,79 @@ void remove_area_of_influence(grid* g, xyzq_int p, short ((*get_value)(grid* g, 
                 if (p.x+x >= 0 && p.x+x < g->size.x) {
                   xyzq_int p2 = {p.x+x, p.y+y, p.z+z, p.q+q};
                   set_checkered_bg(g, p2);
-                  print_field(g, p2, (*get_value));
+                  print_field(g, p2, (*get_value), 1);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+void print_cursor_paused(grid* g, xyzq_int p) {
+  set_bg_colour(PINK);
+  print_field_paused(g, p);
+}
+
+void print_area_of_influence_paused(grid* g, xyzq_int p) {
+  p.x -= 1;
+  p.y -= 1;
+  p.z -= 1;
+  p.q -= 1;
+  for (int q = 0; q < 3; q++) {
+    if (p.q+q >= 0 && p.q+q < g->size.q) {
+      for (int z = 0; z < 3; z++) {
+        if (p.z+z >= 0 && p.z+z < g->size.z) {
+          for (int y = 0; y < 3; y++) {
+            if (p.y+y >= 0 && p.y+y < g->size.y) {
+              for (int x = 0; x < 3; x++) {
+                if (p.x+x >= 0 && p.x+x < g->size.x) {
+                  xyzq_int p2 = {p.x+x, p.y+y, p.z+z, p.q+q};
+                  unsigned long pos = grid_pos(g, p2);
+                  if ((p2.x+p2.y%2)%2) {
+                    set_bg_colour(PAUSED_PINK_DARK);
+                  } else {
+                    set_bg_colour(PAUSED_PINK_LIGHT);
+                  }
+                  print_field_paused(g, p2);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+void print_cursor_paused_all(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
+  print_area_of_influence_paused(g, p);
+  print_cursor_paused(g, p);
+}
+
+/*void remove_cursor_paused(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
+  set_checkered_bg_paused(g, p);
+  print_field_paused(g, p);
+}*/
+
+void remove_area_of_influence_paused(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
+  p.x -= 1;
+  p.y -= 1;
+  p.z -= 1;
+  p.q -= 1;
+  for (int q = 0; q < 3; q++) {
+    if (p.q+q >= 0 && p.q+q < g->size.q) {
+      for (int z = 0; z < 3; z++) {
+        if (p.z+z >= 0 && p.z+z < g->size.z) {
+          for (int y = 0; y < 3; y++) {
+            if (p.y+y >= 0 && p.y+y < g->size.y) {
+              for (int x = 0; x < 3; x++) {
+                if (p.x+x >= 0 && p.x+x < g->size.x) {
+                  xyzq_int p2 = {p.x+x, p.y+y, p.z+z, p.q+q};
+                  set_checkered_bg_paused(g, p2);
+                  print_field_paused(g, p2);
                 }
               }
             }
@@ -1165,17 +1316,25 @@ int main(int argc, char** argv) {
   };
 
   short (*get_value)(grid* g, unsigned long pos) = NULL;
+  void (*print_cursor_func)(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos)));
+  void (*remove_cursor_func)(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos)));
   if (op[10].value) {
     get_value = delta_value;
   } else {
     get_value = grid_value;
   }
   grid* g = create_grid(size, op[7].value, (op[5].value)?time(0):op[6].value, op[8].value);
+  if (g->state == PAUSED) {
+    print_cursor_func = print_cursor_paused_all;
+    remove_cursor_func = remove_area_of_influence_paused;
+  } else {
+    print_cursor_func = print_cursor_all;
+    remove_cursor_func = remove_area_of_influence;
+  }
   unsigned int display_width = g->display_width;
   print_grid(g, get_value);
   xyzq_int cursor = {0, 0, 0, 0};
-  print_area_of_influence(g, cursor, get_value);
-  print_cursor(g, cursor, get_value);
+  (*print_cursor_func)(g, cursor, get_value);
   timer t = {(xy_int){(g->size.z*(g->size.x+1))*g->display_width+2, 7}, g};
   pthread_t timerthread;
   if (op[9].value) {
@@ -1184,7 +1343,7 @@ int main(int argc, char** argv) {
   }
   while (1) {
     int c = getchar();
-    remove_area_of_influence(g, cursor, get_value);
+    remove_cursor_func(g, cursor, get_value);
     //remove_cursor(g, cursor, get_value);
     if (debug_mode) {
       fprintf(stderr, "%d\n", c);
@@ -1270,17 +1429,21 @@ int main(int argc, char** argv) {
         }
         break;
       case 32: //*space*
-        uncover_field(g, cursor, get_value);
-        if (op[9].value) print_info(g);
+        if (g->state != PAUSED) {
+          uncover_field(g, cursor, get_value);
+          if (op[9].value) print_info(g);
+        }
         break;
       case 109: //m
-        mark_field(g, cursor);
-        xy_int bn = find_biggest_number(g);
-        display_width = (op[10].value)?(bn.x > bn.y)?bn.x:bn.y:bn.x;
-        g->display_width = display_width;
-        print_grid(g, get_value);
-        t.pos = (xy_int){(g->size.z*(g->size.x+1))*g->display_width+2, 7};
-        if (op[9].value) print_info(g);
+        if (g->state != PAUSED) {
+          mark_field(g, cursor);
+          xy_int bn = find_biggest_number(g);
+          display_width = (op[10].value)?(bn.x > bn.y)?bn.x:bn.y:bn.x;
+          g->display_width = display_width;
+          print_grid(g, get_value);
+          t.pos = (xy_int){(g->size.z*(g->size.x+1))*g->display_width+2, 7};
+          if (op[9].value) print_info(g);
+        }
         break;
       case 117: //u
         if (op[10].value) {
@@ -1290,14 +1453,14 @@ int main(int argc, char** argv) {
           op[10].value = 1;
           get_value = delta_value;
         }
-        bn = find_biggest_number(g);
+        xy_int bn = find_biggest_number(g);
         display_width = (op[10].value)?(bn.x > bn.y)?bn.x:bn.y:bn.x;
         g->display_width = display_width;
-        print_grid(g, get_value);
         t.pos = (xy_int){(g->size.z*(g->size.x+1))*g->display_width+2, 7};
         print_grid(g, get_value);
         if (op[9].value) print_info(g);
-      case 112: //p
+        break;
+      case 112: {//p
         if (g->state == RUNNING) {
           g->state = PAUSED;
           g->offset += time(0)-g->paused;
@@ -1305,22 +1468,36 @@ int main(int argc, char** argv) {
             pthread_cancel(timerthread);
             print_paused_time_elapsed(g, t.pos);
           }
+          print_cursor_func = print_cursor_paused_all;
+          remove_cursor_func = remove_area_of_influence_paused;
+          print_grid_paused(g);
         } else if (g->state == PAUSED) {
           g->state = RUNNING;
           g->paused = time(0);
           if (op[9].value) pthread_create(&timerthread, NULL, update_time_elapsed, &t);
+          print_cursor_func = print_cursor_all;
+          remove_cursor_func = remove_area_of_influence;
+          print_grid(g, get_value);
         }
         if (op[9].value) print_info(g);
         break;
-      case 111: //o
-        g->state = PAUSED;
-        g->offset += time(0)-g->paused;
-        if (op[9].value) pthread_cancel(timerthread);
+      } case 111: //o
+        short continue_after = 0;
+        if (g->state == RUNNING) {
+          continue_after = 1;
+          g->state = PAUSED;
+          g->offset += time(0)-g->paused;
+          if (op[9].value) pthread_cancel(timerthread);
+        }
         g = print_settings(op, g);
-        g->state = RUNNING;
-        g->paused = time(0);
-        if (op[9].value) pthread_create(&timerthread, NULL, update_time_elapsed, &t);
-        print_grid(g, get_value);
+        if (continue_after) {
+          g->state = RUNNING;
+          g->paused = time(0);
+          if (op[9].value) pthread_create(&timerthread, NULL, update_time_elapsed, &t);
+          print_grid(g, get_value);
+        } else {
+          print_grid_paused(g);
+        }
         if (op[9].value) print_info(g);
         break;
       case 110: //n
@@ -1331,26 +1508,33 @@ int main(int argc, char** argv) {
         if (op[9].value) print_info(g);
         break;
       case 99: //c
-        g->state = PAUSED;
-        g->offset = time(0)-g->paused;
-        if (op[9].value) pthread_cancel(timerthread);
+        continue_after = 0;
+        if (g->state == RUNNING) {
+          g->state = PAUSED;
+          g->offset = time(0)-g->paused;
+          if (op[9].value) pthread_cancel(timerthread);
+        }
         printf("\e[0m");
         printf("\e[2J");
         print_at((xy_int){2, 2});
         print_controls();
         getchar();
-        g->state = RUNNING;
-        g->paused = time(0);
-        print_grid(g, get_value);
-        if (op[9].value) {
-          print_info(g);
-          pthread_create(&timerthread, NULL, update_time_elapsed, &t);
+        if (continue_after) {
+          g->state = RUNNING;
+          g->paused = time(0);
+          print_grid(g, get_value);
+          if (op[9].value) pthread_create(&timerthread, NULL, update_time_elapsed, &t);
+        } else {
+          print_grid_paused(g);
         }
+        if (op[9].value) print_info(g);
         break;
       case 102: //f
-        if (g->uncovered == 0) {
+        if (g->uncovered == 0 && g->state == RUNNING) {
           if (find_empty(g, get_value)) {
             print_str_at((xy_int){t.pos.x, 9}, "\e[0mDidn't find any empty fields");
+          } else {
+            if (op[9].value) print_info(g);
           }
         }
         break;
@@ -1370,8 +1554,7 @@ int main(int argc, char** argv) {
         free(g);
         exit(EXIT_SUCCESS);
     }
-    print_area_of_influence(g, cursor, get_value);
-    print_cursor(g, cursor, get_value);
+    (*print_cursor_func)(g, cursor, get_value);
     if (g->state > PAUSED) {
       g->offset = time(0)-g->paused;
       if (op[9].value) {

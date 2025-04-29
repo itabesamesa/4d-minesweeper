@@ -87,10 +87,13 @@ There are a few extra options you could add, if you don't want to edit the setti
 - [ ] Assume field size of 1 when user gives less than 4 integers for option --size
 - [x] Make field shrink after numbers change
 - [ ] Graphical bug in cursor's area of influence when unpausing
-- [ ] Hide field when paused
+- [ ] Graphical bug with timer, prints to random x position sometimes
+- [x] Hide field when paused
 - [ ] Start timer on first key press
 - [ ] Add option to reveal field when game is over
 - [ ] Make time minutes and seconds
+- [ ] Make uncover field work better in delta mode
+- [x] Show 0 in delta mode when there are covered fields in its area of influence
 
 ## Special thanks
 
