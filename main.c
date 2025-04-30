@@ -75,6 +75,8 @@ enum {
   RUNNING = 0,
   PAUSED,
   CLICKED_BOMB,
+  GAVE_UP,
+  REVEAL_FIELD,
   WIN,
 };
 
@@ -89,13 +91,13 @@ short PINK[3] = {255, 42, 255};
 short COVERED_PINK_LIGHT[3] = {128, 115, 128};
 short COVERED_PINK_DARK[3] = {89, 80, 89};
 short UNCOVERED_PINK_LIGHT[3] = {179, 161, 179};
-short UNCOVERED_PINK_DARK[3] = {153, 138, 153};
+short UNCOVERED_PINK_DARK[3] = {166, 149, 166};
 short PAUSED_PINK_LIGHT[3] = {77, 69, 77};
 short PAUSED_PINK_DARK[3] = {64, 57, 64};
 short RED[3] = {255, 0, 0};
 
 int option_offset = 20;
-int numbuffer_len = 9;
+int numbuffer_len = 10;
 
 struct termios saved_attributes;
 
@@ -437,8 +439,12 @@ void print_info(grid* g) {
     case PAUSED:
       printf("Game paused");
       break;
+    case REVEAL_FIELD:
     case CLICKED_BOMB:
       printf("Game over");
+      break;
+    case GAVE_UP:
+      printf("Game capitulated");
       break;
     case WIN:
       printf("Game won");
@@ -463,7 +469,7 @@ void* update_time_elapsed(void* args) {
   timer* t = args;
   while (1) {
     print_at(t->pos);
-    printf("\e[0mTime elapsed: %d seconds", (time(0)-t->g->paused)+t->g->offset);
+    printf("\e[0m\e[KTime elapsed: %d seconds", (time(0)-t->g->paused)+t->g->offset);
     //fprintf(stderr, "Time elapsed: %d seconds", (time(0)-t->g->paused)+t->g->offset);
     sleep(1);
   }
@@ -657,7 +663,10 @@ void print_grid_uncovered(grid* g, short ((*get_value)(grid* g, unsigned long po
         for (int x = 0; x < g->size.x; x++) {
           xyzq_int p = {x, y, z, q};
           unsigned long pos = grid_pos(g, p);
-          if (g->mask[pos] == COVERED) g->mask[pos] = UNCOVERED;
+          if (g->mask[pos] == COVERED) {
+            g->mask[pos] = UNCOVERED;
+            g->uncovered += 1;
+          }
           set_checkered_bg(g, p);
           print_field_uncovered(g, p, pos, (*get_value));
         }
@@ -803,6 +812,22 @@ void mark_field(grid* g, xyzq_int p) {
   }
 }
 
+void set_checkered_bg_cursor(grid* g, xyzq_int p, unsigned long pos) {
+  if ((p.x+p.y%2)%2) {
+    if (g->mask[pos] > UNCOVERED) {
+      set_bg_colour(COVERED_PINK_DARK);
+    } else {
+      set_bg_colour(UNCOVERED_PINK_DARK);
+    }
+  } else {
+    if (g->mask[pos] > UNCOVERED) {
+      set_bg_colour(COVERED_PINK_LIGHT);
+    } else {
+      set_bg_colour(UNCOVERED_PINK_LIGHT);
+    }
+  }
+}
+
 void print_cursor(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
   set_bg_colour(PINK);
   print_field(g, p, (*get_value), 1);
@@ -823,19 +848,7 @@ void print_area_of_influence(grid* g, xyzq_int p, short ((*get_value)(grid* g, u
                 if (p.x+x >= 0 && p.x+x < g->size.x) {
                   xyzq_int p2 = {p.x+x, p.y+y, p.z+z, p.q+q};
                   unsigned long pos = grid_pos(g, p2);
-                  if ((p2.x+p2.y%2)%2) {
-                    if (g->mask[pos] > UNCOVERED) {
-                      set_bg_colour(COVERED_PINK_DARK);
-                    } else {
-                      set_bg_colour(UNCOVERED_PINK_DARK);
-                    }
-                  } else {
-                    if (g->mask[pos] > UNCOVERED) {
-                      set_bg_colour(COVERED_PINK_LIGHT);
-                    } else {
-                      set_bg_colour(UNCOVERED_PINK_LIGHT);
-                    }
-                  }
+                  set_checkered_bg_cursor(g, p2, pos);
                   print_field(g, p2, (*get_value), 1);
                 }
               }
@@ -970,11 +983,7 @@ void print_area_of_influence_uncovered(grid* g, xyzq_int p, short ((*get_value)(
                 if (p.x+x >= 0 && p.x+x < g->size.x) {
                   xyzq_int p2 = {p.x+x, p.y+y, p.z+z, p.q+q};
                   unsigned long pos = grid_pos(g, p2);
-                  if ((p2.x+p2.y%2)%2) {
-                    set_bg_colour(UNCOVERED_PINK_DARK);
-                  } else {
-                    set_bg_colour(UNCOVERED_PINK_LIGHT);
-                  }
+                  set_checkered_bg_cursor(g, p2, pos);
                   print_field_uncovered(g, p2, pos, get_value);
                 }
               }
@@ -1256,6 +1265,7 @@ int main(int argc, char** argv) {
   char numbuffer[numbuffer_len];
   numbuffer[0] = '\0';
   unsigned int numbufferpos = 0;
+  short game_running = 1;
   printf("\e[?25l");
   printf("\e[s");
   set_input_mode();
@@ -1483,8 +1493,8 @@ int main(int argc, char** argv) {
         g->display_width = display_width;
         printf("\e[2J");
         print_grid(g, get_value);
-        if (op[9].value) print_info(g);
         t.pos = (xy_int){(g->size.z*(g->size.x+1))*g->display_width+2, 7};
+        if (op[9].value) print_info(g);
         fprintf(stderr, "%d\n", g->display_width);
       }
     }
@@ -1538,9 +1548,19 @@ int main(int argc, char** argv) {
         }
         break;
       case 32: //*space*
-        if (g->state != PAUSED) {
+        if (g->state == RUNNING) {
           uncover_field(g, cursor, get_value);
-          if (op[9].value) print_info(g);
+          if (g->state > PAUSED && game_running) {
+            game_running = 0;
+            g->offset += time(0)-g->paused;
+            if (op[9].value) {
+              pthread_cancel(timerthread);
+              print_paused_time_elapsed(g, t.pos);
+              print_info(g);
+            }
+          } else {
+            if (op[9].value) print_info(g);
+          }
         }
         break;
       case 101: //e
@@ -1555,10 +1575,10 @@ int main(int argc, char** argv) {
             printf("\e[2J");
             t.pos = (xy_int){(g->size.z*(g->size.x+1))*g->display_width+2, 7};
           }
-          if (g->state != CLICKED_BOMB) {
-            print_grid(g, get_value);
-          } else {
+          if (g->state == GAVE_UP || g->state == REVEAL_FIELD) {
             print_grid_uncovered(g, get_value);
+          } else {
+            print_grid(g, get_value);
           }
           if (op[9].value) print_info(g);
         }
@@ -1584,16 +1604,21 @@ int main(int argc, char** argv) {
         break;
       case 103: //g
         if (g->state != PAUSED && g->state != WIN) {
-          g->state = CLICKED_BOMB;
-          g->offset += time(0)-g->paused;
-          if (op[9].value) {
-            pthread_cancel(timerthread);
-            print_paused_time_elapsed(g, t.pos);
+          game_running = 0;
+          if (g->state != CLICKED_BOMB) {
+            g->state = GAVE_UP;
+          } else {
+            g->state = REVEAL_FIELD;
           }
+          g->offset += time(0)-g->paused;
           print_cursor_func = print_cursor_uncovered_all;
           remove_cursor_func = remove_area_of_influence_uncovered;
           print_grid_uncovered(g, get_value);
-          if (op[9].value) print_info(g);
+          if (op[9].value) {
+            pthread_cancel(timerthread);
+            print_paused_time_elapsed(g, t.pos);
+            print_info(g);
+          }
         }
         break;
       case 112: {//p
@@ -1637,6 +1662,8 @@ int main(int argc, char** argv) {
         if (op[9].value) print_info(g);
         break;
       case 110: //n
+        game_running = 1;
+        int game_state = g->state;
         free(g);
         size = (xyzq_int){op[1].value, op[2].value, op[3].value, op[4].value};
         g = create_grid(size, op[7].value, (op[5].value)?time(0):op[6].value, op[8].value);
@@ -1645,7 +1672,13 @@ int main(int argc, char** argv) {
         printf("\e[0m");
         printf("\e[2J");
         print_grid(g, get_value);
-        if (op[9].value) print_info(g);
+        g->offset = 0;
+        g->paused = time(0);
+        t = (timer){(xy_int){(g->size.z*(g->size.x+1))*g->display_width+2, 7}, g};
+        if (op[9].value) {
+          print_info(g);
+          if (game_state != RUNNING) pthread_create(&timerthread, NULL, update_time_elapsed, &t);
+        }
         break;
       case 99: //c
         continue_after = 0;
@@ -1695,12 +1728,5 @@ int main(int argc, char** argv) {
         exit(EXIT_SUCCESS);
     }
     (*print_cursor_func)(g, cursor, get_value);
-    if (g->state > PAUSED) {
-      g->offset = time(0)-g->paused;
-      if (op[9].value) {
-        pthread_cancel(timerthread);
-        print_paused_time_elapsed(g, t.pos);
-      }
-    }
   }
 }

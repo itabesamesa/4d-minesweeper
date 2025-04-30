@@ -89,22 +89,22 @@ There are a few extra options you could add, if you don't want to edit the setti
 - [x] Make field shrink after numbers change
 - [ ] Graphical bug in cursor's area of influence when unpausing
 - [ ] Graphical bug with timer, prints to random x position sometimes
+- [ ] Graphical bug with flags after unpausing
+- [ ] Marking field on game over reveals entire field
 - [x] Hide field when paused
 - [ ] Start timer on first key press
 - [x] Add option to reveal field when game is over
 - [ ] Make time minutes and seconds
 - [ ] Make uncover field work better in delta mode
 - [x] Show 0 in delta mode when there are covered fields in its area of influence
-- [ ] Find better colours for the cursor. I will not accept to any colour other than pink!
+- [x] Find better colours for the cursor. I will not accept to any colour other than pink!
 - [ ] Sometimes field turns wide randomly
 - [ ] Timer disappears after new game
 
 ## Special thanks
 
-To GNU for their licence and the code for setting the terminal to noncanonical mode
-[Noncanonical Mode Example](https://www.gnu.org/software/libc/manual/html_node/Noncanon-Example.html)
+To GNU for their licence and the code for setting the terminal to [noncanonical mode](https://www.gnu.org/software/libc/manual/html_node/Noncanon-Example.html)
 
-To [EsultaniK](https://github.com/ESultanik) and [Wallabra](https://github.com/wallabra) for writing the code for the Mersenne twister
-[Mtwister](https://github.com/ESultanik/mtwister)
+To [EsultaniK](https://github.com/ESultanik) and [Wallabra](https://github.com/wallabra) for writing the code for the [Mersenne twister](https://github.com/ESultanik/mtwister)
 
 To Julian Schlüntz for creating [4D Minesweeper](https://store.steampowered.com/app/787980/4D_Minesweeper/) on steam, the original inspiration for this project
