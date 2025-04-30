@@ -465,9 +465,18 @@ void remove_info(grid* g) {
   }
 }
 
+unsigned int* format_timer(unsigned int* formated, unsigned int seconds) {
+  formated[0] = seconds/3600;
+  formated[1] = (seconds%3600)/60;
+  formated[2] = seconds%60;
+  return formated;
+}
+
 void print_timer(timer* t) {
   print_at(t->pos);
-  printf("\e[0m\e[KTime elapsed: %d seconds", (time(0)-t->g->paused)+t->g->offset);
+  unsigned int formated[3];
+  format_timer(formated, (time(0)-t->g->paused)+t->g->offset);
+  printf("\e[0m\e[KTime elapsed: %d:%02d:%02d", formated[0], formated[1], formated[2]);
 }
 
 void* update_time_elapsed(void* args) {
@@ -481,9 +490,9 @@ void* update_time_elapsed(void* args) {
 
 void print_paused_time_elapsed(grid* g, xy_int pos) {
   print_at(pos);
-  printf("\e[0m");
-  printf("\e[K");
-  printf("Time elapsed: %d seconds", g->offset);
+  unsigned int formated[3];
+  format_timer(formated, g->offset);
+  printf("\e[0m\e[KTime elapsed: %d:%02d:%02d", formated[0], formated[1], formated[2]);
 }
 
 void remove_grid(grid* g) {
@@ -721,9 +730,41 @@ void uncover_field(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned lo
         }
         g->recusion_depth = recusion_depth;
       }
-      if (g->uncovered == g->len-g->bombs && g->state != CLICKED_BOMB) {
-        g->state = WIN;
+    } else {
+      if (g->delta[pos] == 0) {
+        p.x -= 1;
+        p.y -= 1;
+        p.z -= 1;
+        p.q -= 1;
+        for (int q = 0; q < 3; q++) {
+          if (p.q+q >= 0 && p.q+q < g->size.q) {
+            for (int z = 0; z < 3; z++) {
+              if (p.z+z >= 0 && p.z+z < g->size.z) {
+                for (int y = 0; y < 3; y++) {
+                  if (p.y+y >= 0 && p.y+y < g->size.y) {
+                    for (int x = 0; x < 3; x++) {
+                      if (p.x+x >= 0 && p.x+x < g->size.x) {
+                        xyzq_int p2 = {p.x+x, p.y+y, p.z+z, p.q+q};
+                        pos = grid_pos(g, p2);
+                        if (g->mask[pos] == COVERED) {
+                          g->mask[pos] = UNCOVERED;
+                          g->uncovered += 1;
+                          if (g->grid[pos] == BOMB) g->state = CLICKED_BOMB;
+                          uncover_field(g, p2, (*get_value));
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        print_grid(g, get_value);
       }
+    }
+    if (g->uncovered == g->len-g->bombs && g->state != CLICKED_BOMB) {
+      g->state = WIN;
     }
   }
 }

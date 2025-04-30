@@ -90,16 +90,20 @@ There are a few extra options you could add, if you don't want to edit the setti
 - [ ] Graphical bug in cursor's area of influence when unpausing
 - [ ] Graphical bug with timer, prints to random x position sometimes
 - [ ] Graphical bug with flags after unpausing
+- [x] Sometimes there is a graphical bug when chording
 - [x] Marking field on game over reveals entire field
 - [x] Hide field when paused
 - [ ] Start timer on first key press
 - [x] Add option to reveal field when game is over
-- [ ] Make time minutes and seconds
+- [x] Make time minutes and seconds
 - [ ] Make uncover field work better in delta mode
 - [x] Show 0 in delta mode when there are covered fields in its area of influence
 - [x] Find better colours for the cursor. I will not accept to any colour other than pink!
 - [x] Sometimes field turns wide randomly
 - [x] Timer disappears after new game
+- [x] Implement chording for uncovering fields
+- [ ] Improve chording for uncovering fields
+- [ ] Implement chording for marking fields
 
 ## Special thanks
 
