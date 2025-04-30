@@ -90,7 +90,7 @@ There are a few extra options you could add, if you don't want to edit the setti
 - [ ] Graphical bug in cursor's area of influence when unpausing
 - [ ] Graphical bug with timer, prints to random x position sometimes
 - [ ] Graphical bug with flags after unpausing
-- [ ] Marking field on game over reveals entire field
+- [x] Marking field on game over reveals entire field
 - [x] Hide field when paused
 - [ ] Start timer on first key press
 - [x] Add option to reveal field when game is over
@@ -99,7 +99,7 @@ There are a few extra options you could add, if you don't want to edit the setti
 - [x] Show 0 in delta mode when there are covered fields in its area of influence
 - [x] Find better colours for the cursor. I will not accept to any colour other than pink!
 - [ ] Sometimes field turns wide randomly
-- [ ] Timer disappears after new game
+- [x] Timer disappears after new game
 
 ## Special thanks
 

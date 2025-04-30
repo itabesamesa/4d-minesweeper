@@ -465,11 +465,15 @@ void remove_info(grid* g) {
   }
 }
 
+void print_timer(timer* t) {
+  print_at(t->pos);
+  printf("\e[0m\e[KTime elapsed: %d seconds", (time(0)-t->g->paused)+t->g->offset);
+}
+
 void* update_time_elapsed(void* args) {
   timer* t = args;
   while (1) {
-    print_at(t->pos);
-    printf("\e[0m\e[KTime elapsed: %d seconds", (time(0)-t->g->paused)+t->g->offset);
+    print_timer(t);
     //fprintf(stderr, "Time elapsed: %d seconds", (time(0)-t->g->paused)+t->g->offset);
     sleep(1);
   }
@@ -1457,6 +1461,7 @@ int main(int argc, char** argv) {
   pthread_t timerthread;
   if (op[9].value) {
     print_info(g);
+    print_timer(&t);
     pthread_create(&timerthread, NULL, update_time_elapsed, &t);
   }
   while (1) {
@@ -1548,7 +1553,7 @@ int main(int argc, char** argv) {
         }
         break;
       case 32: //*space*
-        if (g->state == RUNNING) {
+        if (g->state != PAUSED) {
           uncover_field(g, cursor, get_value);
           if (g->state > PAUSED && game_running) {
             game_running = 0;
@@ -1574,6 +1579,7 @@ int main(int argc, char** argv) {
             printf("\e[0m");
             printf("\e[2J");
             t.pos = (xy_int){(g->size.z*(g->size.x+1))*g->display_width+2, 7};
+            print_timer(&t);
           }
           if (g->state == GAVE_UP || g->state == REVEAL_FIELD) {
             print_grid_uncovered(g, get_value);
@@ -1603,14 +1609,14 @@ int main(int argc, char** argv) {
         if (op[9].value) print_info(g);
         break;
       case 103: //g
-        if (g->state != PAUSED && g->state != WIN) {
+        if (g->state != PAUSED && g->state < GAVE_UP) {
           game_running = 0;
           if (g->state != CLICKED_BOMB) {
             g->state = GAVE_UP;
+            g->offset += time(0)-g->paused;
           } else {
             g->state = REVEAL_FIELD;
           }
-          g->offset += time(0)-g->paused;
           print_cursor_func = print_cursor_uncovered_all;
           remove_cursor_func = remove_area_of_influence_uncovered;
           print_grid_uncovered(g, get_value);
@@ -1677,6 +1683,7 @@ int main(int argc, char** argv) {
         t = (timer){(xy_int){(g->size.z*(g->size.x+1))*g->display_width+2, 7}, g};
         if (op[9].value) {
           print_info(g);
+          print_timer(&t);
           if (game_state != RUNNING) pthread_create(&timerthread, NULL, update_time_elapsed, &t);
         }
         break;
