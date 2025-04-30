@@ -757,7 +757,7 @@ xy_int find_biggest_number(grid* g) {
           if (g->grid[pos] > bn) {
             bn = g->grid[pos];
           }
-          if (g->delta[pos] < sn && g->delta[pos] < 0) {
+          if (g->delta[pos] < sn && g->delta[pos] < 0 && g->grid[pos] != BOMB) {
             sn = g->delta[pos];
           }
         }

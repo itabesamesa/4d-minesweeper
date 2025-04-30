@@ -98,7 +98,7 @@ There are a few extra options you could add, if you don't want to edit the setti
 - [ ] Make uncover field work better in delta mode
 - [x] Show 0 in delta mode when there are covered fields in its area of influence
 - [x] Find better colours for the cursor. I will not accept to any colour other than pink!
-- [ ] Sometimes field turns wide randomly
+- [x] Sometimes field turns wide randomly
 - [x] Timer disappears after new game
 
 ## Special thanks
