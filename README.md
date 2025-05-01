@@ -2,7 +2,7 @@
 
 4d minesweeper made for the terminal
 
-![A video of a game of 4d minesweeper](https://github.com/user-attachments/assets/e213d4ac-162e-486d-b00c-a47d5d4c2fa0)
+https://github.com/user-attachments/assets/e213d4ac-162e-486d-b00c-a47d5d4c2fa0
 
 ## How to play
 
