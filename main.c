@@ -12,16 +12,17 @@
 #include <locale.h>
 #include "mtwister.h"
 
-typedef struct _xyzq_int {
-  int x, y, z, q;
-} xyzq_int;
+typedef struct _xyzw_int {
+  int x, y, z, w;
+} xyzw_int;
 
 typedef struct _xy_int {
   int x, y;
 } xy_int;
 
 typedef struct _grid {
-  xyzq_int size;
+  xyzw_int size;
+  xyzw_int cursor;
   unsigned long len;
   unsigned long uncovered;
   unsigned long bombs;
@@ -139,32 +140,32 @@ void exit_game() {
   printf("\e[u");
 }
 
-unsigned long get_size(xyzq_int size) {
-  return size.x*size.y*size.z*size.q;
+unsigned long get_size(xyzw_int size) {
+  return size.x*size.y*size.z*size.w;
 }
 
-void print_xyzq(xyzq_int p) {
-  fprintf(stderr, "xyzq_int:\n\tx: %d\n\ty: %d\n\tz: %d\n\ta: %d\n", p.x, p.y, p.z, p.q);
+void print_xyzw(xyzw_int p) {
+  fprintf(stderr, "xyzw_int:\n\tx: %d\n\ty: %d\n\tz: %d\n\ta: %d\n", p.x, p.y, p.z, p.w);
 }
 
 uint32_t rand_between(MTRand r, int min, int max) {
   return genRandLong(&r)%(max-min)+min;
 }
 
-xyzq_int rand_coord(grid* g, MTRand r) {
-  xyzq_int p;
+xyzw_int rand_coord(grid* g, MTRand r) {
+  xyzw_int p;
   p.x = genRand(&r)*g->size.x;
   p.y = genRand(&r)*g->size.y;
   p.z = genRand(&r)*g->size.z;
-  p.q = genRand(&r)*g->size.q;
+  p.w = genRand(&r)*g->size.w;
 }
 
-unsigned long grid_pos(grid* g, xyzq_int p) {
-  return ((p.x+(p.y*g->size.x))*g->size.z+p.z)*g->size.q+p.q;
+unsigned long grid_pos(grid* g, xyzw_int p) {
+  return ((p.x+(p.y*g->size.x))*g->size.z+p.z)*g->size.w+p.w;
 }
 
-short grid_at(grid* g, xyzq_int p) {
-  if (p.x < g->size.x && p.y < g->size.y && p.z < g->size.z && p.q < g->size.q) {
+short grid_at(grid* g, xyzw_int p) {
+  if (p.x < g->size.x && p.y < g->size.y && p.z < g->size.z && p.w < g->size.w) {
     unsigned long pos = grid_pos(g, p);
     return g->grid[pos];
   } else {
@@ -172,8 +173,8 @@ short grid_at(grid* g, xyzq_int p) {
   }
 }
 
-void grid_place_at(grid* g, xyzq_int p, short v) {
-  if (p.x < g->size.x && p.y < g->size.y && p.z < g->size.z && p.q < g->size.q) {
+void grid_place_at(grid* g, xyzw_int p, short v) {
+  if (p.x < g->size.x && p.y < g->size.y && p.z < g->size.z && p.w < g->size.w) {
     unsigned long pos = grid_pos(g, p);
     g->grid[pos] = v;
     int numwidth = log10(v);
@@ -183,7 +184,7 @@ void grid_place_at(grid* g, xyzq_int p, short v) {
   }
 }
 
-void grid_inc_if_above_at(grid* g, xyzq_int p, short threshold) {
+void grid_inc_if_above_at(grid* g, xyzw_int p, short threshold) {
   unsigned long pos = grid_pos(g, p);
   if (g->grid[pos] > threshold) {
     g->grid[pos] += 1;
@@ -198,11 +199,11 @@ void place_mines(grid* g, MTRand r) {
   for (long i = 0; i < g->bombs; i++) {
     short t = 1;
     while (t) {
-      xyzq_int p;
+      xyzw_int p;
       p.x = genRand(&r)*g->size.x;
       p.y = genRand(&r)*g->size.y;
       p.z = genRand(&r)*g->size.z;
-      p.q = genRand(&r)*g->size.q;
+      p.w = genRand(&r)*g->size.w;
       short v = grid_at(g, p);
       if (v > BOMB) {
         grid_place_at(g, p, BOMB);
@@ -210,16 +211,16 @@ void place_mines(grid* g, MTRand r) {
         p.x -= 1;
         p.y -= 1;
         p.z -= 1;
-        p.q -= 1;
-        for (int q = 0; q < 3; q++) {
-          if (p.q+q >= 0 && p.q+q < g->size.q) {
+        p.w -= 1;
+        for (int w = 0; w < 3; w++) {
+          if (p.w+w >= 0 && p.w+w < g->size.w) {
             for (int z = 0; z < 3; z++) {
               if (p.z+z >= 0 && p.z+z < g->size.z) {
                 for (int y = 0; y < 3; y++) {
                   if (p.y+y >= 0 && p.y+y < g->size.y) {
                     for (int x = 0; x < 3; x++) {
                       if (p.x+x >= 0 && p.x+x < g->size.x) {
-                        grid_inc_if_above_at(g, (xyzq_int){p.x+x, p.y+y, p.z+z, p.q+q}, BOMB);
+                        grid_inc_if_above_at(g, (xyzw_int){p.x+x, p.y+y, p.z+z, p.w+w}, BOMB);
                       }
                     }
                   }
@@ -239,11 +240,11 @@ void place_empty(grid* g, MTRand r) {
     for (long i = 0; i < empty_fields; i++) {
       short t = 1;
       while (t) {
-        xyzq_int p;
+        xyzw_int p;
         p.x = genRand(&r)*g->size.x;
         p.y = genRand(&r)*g->size.y;
         p.z = genRand(&r)*g->size.z;
-        p.q = genRand(&r)*g->size.q;
+        p.w = genRand(&r)*g->size.w;
         short v = grid_at(g, p);
         if (v == BOMB) {
           unsigned int bombs_in_area = 0;
@@ -252,16 +253,16 @@ void place_empty(grid* g, MTRand r) {
           p.x -= 1;
           p.y -= 1;
           p.z -= 1;
-          p.q -= 1;
-          for (int q = 0; q < 3; q++) {
-            if (p.q+q >= 0 && p.q+q < g->size.q) {
+          p.w -= 1;
+          for (int w = 0; w < 3; w++) {
+            if (p.w+w >= 0 && p.w+w < g->size.w) {
               for (int z = 0; z < 3; z++) {
                 if (p.z+z >= 0 && p.z+z < g->size.z) {
                   for (int y = 0; y < 3; y++) {
                     if (p.y+y >= 0 && p.y+y < g->size.y) {
                       for (int x = 0; x < 3; x++) {
                         if (p.x+x >= 0 && p.x+x < g->size.x) {
-                          unsigned long pos = grid_pos(g, (xyzq_int){p.x+x, p.y+y, p.z+z, p.q+q});
+                          unsigned long pos = grid_pos(g, (xyzw_int){p.x+x, p.y+y, p.z+z, p.w+w});
                           if (g->grid[pos] == BOMB) {
                             bombs_in_area++;
                           } else {
@@ -275,17 +276,18 @@ void place_empty(grid* g, MTRand r) {
               }
             }
           }
-          grid_place_at(g, (xyzq_int){p.x+1, p.y+1, p.z+1, p.q+1}, bombs_in_area);
+          grid_place_at(g, (xyzw_int){p.x+1, p.y+1, p.z+1, p.w+1}, bombs_in_area);
         }
       }
     }
   }
 }
 
-grid* create_grid(xyzq_int size, unsigned long bombs, unsigned int seed, unsigned int recusion_depth) {
+grid* create_grid(xyzw_int size, unsigned long bombs, unsigned int seed, unsigned int recusion_depth) {
   unsigned long len = get_size(size);
   grid* g = (grid*)malloc(sizeof(grid)+len*sizeof(short)*3);
   g->size = size;
+  g->cursor = (xyzw_int){0, 0, 0, 0};
   g->len = len;
   g->uncovered = 0;
   g->bombs = bombs;
@@ -407,10 +409,10 @@ void set_fg_colour(short* c) {
   printf("\e[38;2;%d;%d;%dm", c[0], c[1], c[2]);
 }
 
-xy_int xyzq_int_to_xy_int(grid* g, xyzq_int p) {
+xy_int xyzw_int_to_xy_int(grid* g, xyzw_int p) {
   xy_int p2;
   p2.x = (p.z*(g->size.x+1)+p.x)*g->display_width+1;
-  p2.y = p.q*(g->size.y+1)+p.y+1;
+  p2.y = p.w*(g->size.y+1)+p.y+1;
   return p2;
 }
 
@@ -495,7 +497,7 @@ void print_paused_time_elapsed(grid* g, xy_int pos) {
 }
 
 void remove_grid(grid* g) {
-  xy_int bottom_right_corner = xyzq_int_to_xy_int(g, (xyzq_int){g->size.x-1, g->size.y-1, g->size.z-1, g->size.q-1});
+  xy_int bottom_right_corner = xyzw_int_to_xy_int(g, (xyzw_int){g->size.x-1, g->size.y-1, g->size.z-1, g->size.w-1});
   for (int i = 0; i < bottom_right_corner.y; i++) {
     printf("\e[%d;%dH\e[1K", i, bottom_right_corner.x);
   }
@@ -509,20 +511,20 @@ short delta_value(grid* g, unsigned long pos) {
   return g->delta[pos];
 }
 
-short check_around_if_covered(grid* g, xyzq_int p) {
+short check_around_if_covered(grid* g, xyzw_int p) {
   p.x -= 1;
   p.y -= 1;
   p.z -= 1;
-  p.q -= 1;
-  for (int q = 0; q < 3; q++) {
-    if (p.q+q >= 0 && p.q+q < g->size.q) {
+  p.w -= 1;
+  for (int w = 0; w < 3; w++) {
+    if (p.w+w >= 0 && p.w+w < g->size.w) {
       for (int z = 0; z < 3; z++) {
         if (p.z+z >= 0 && p.z+z < g->size.z) {
           for (int y = 0; y < 3; y++) {
             if (p.y+y >= 0 && p.y+y < g->size.y) {
               for (int x = 0; x < 3; x++) {
                 if (p.x+x >= 0 && p.x+x < g->size.x) {
-                  unsigned long pos = grid_pos(g, (xyzq_int){p.x+x, p.y+y, p.z+z, p.q+q});
+                  unsigned long pos = grid_pos(g, (xyzw_int){p.x+x, p.y+y, p.z+z, p.w+w});
                   if (g->mask[pos] == COVERED) {
                     return 1;
                   }
@@ -537,12 +539,12 @@ short check_around_if_covered(grid* g, xyzq_int p) {
   return 0;
 }
 
-void print_field(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos)), short print_zero) {
+void print_field(grid* g, xyzw_int p, short ((*get_value)(grid* g, unsigned long pos)), short print_zero) {
   set_fg_colour(BLACK);
   unsigned int print_buffer = (g->display_width)/2;
-  if (p.x < g->size.x && p.y < g->size.y && p.z < g->size.z && p.q < g->size.q) {
+  if (p.x < g->size.x && p.y < g->size.y && p.z < g->size.z && p.w < g->size.w) {
     unsigned long pos = grid_pos(g, p);
-    xy_int p2 = xyzq_int_to_xy_int(g, p);
+    xy_int p2 = xyzw_int_to_xy_int(g, p);
     if (g->mask[pos] == UNCOVERED) {
       if (g->grid[pos] == BOMB) {
         print_wide_str_with_buffer(g, p2, "💣", print_buffer);
@@ -574,8 +576,8 @@ void print_field(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long
   }
 }
 
-void set_checkered_bg(grid* g, xyzq_int p) {
-  if (p.x < g->size.x && p.y < g->size.y && p.z < g->size.z && p.q < g->size.q) {
+void set_checkered_bg(grid* g, xyzw_int p) {
+  if (p.x < g->size.x && p.y < g->size.y && p.z < g->size.z && p.w < g->size.w) {
     unsigned long pos = grid_pos(g, p);
     if ((p.x+p.y%2)%2) {
       if (g->mask[pos] > UNCOVERED) {
@@ -597,11 +599,11 @@ void print_grid(grid* g, short ((*get_value)(grid* g, unsigned long pos))) {
   set_fg_colour(BLACK);
   printf("\e[0m");
   remove_grid(g);
-  for (int q = 0; q < g->size.q; q++) {
+  for (int w = 0; w < g->size.w; w++) {
     for (int z = 0; z < g->size.z; z++) {
       for (int y = 0; y < g->size.y; y++) {
         for (int x = 0; x < g->size.x; x++) {
-          xyzq_int p = {x, y, z, q};
+          xyzw_int p = {x, y, z, w};
           set_checkered_bg(g, p);
           print_field(g, p, (*get_value), 1);
         }
@@ -610,12 +612,12 @@ void print_grid(grid* g, short ((*get_value)(grid* g, unsigned long pos))) {
   }
 }
 
-void print_field_paused(grid* g, xyzq_int p) {
-  repeat_str_at(xyzq_int_to_xy_int(g, p), ' ', g->display_width);
+void print_field_paused(grid* g, xyzw_int p) {
+  repeat_str_at(xyzw_int_to_xy_int(g, p), ' ', g->display_width);
 }
 
-void set_checkered_bg_paused(grid* g, xyzq_int p) {
-  if (p.x < g->size.x && p.y < g->size.y && p.z < g->size.z && p.q < g->size.q) {
+void set_checkered_bg_paused(grid* g, xyzw_int p) {
+  if (p.x < g->size.x && p.y < g->size.y && p.z < g->size.z && p.w < g->size.w) {
     if ((p.x+p.y%2)%2) {
       set_bg_colour(PAUSED_DARK);
     } else {
@@ -628,11 +630,11 @@ void print_grid_paused(grid* g) {
   set_fg_colour(BLACK);
   printf("\e[0m");
   remove_grid(g);
-  for (int q = 0; q < g->size.q; q++) {
+  for (int w = 0; w < g->size.w; w++) {
     for (int z = 0; z < g->size.z; z++) {
       for (int y = 0; y < g->size.y; y++) {
         for (int x = 0; x < g->size.x; x++) {
-          xyzq_int p = {x, y, z, q};
+          xyzw_int p = {x, y, z, w};
           set_checkered_bg_paused(g, p);
           print_field_paused(g, p);
         }
@@ -641,11 +643,11 @@ void print_grid_paused(grid* g) {
   }
 }
 
-void print_field_uncovered(grid* g, xyzq_int p, unsigned long pos, short ((*get_value)(grid* g, unsigned long pos))) {
+void print_field_uncovered(grid* g, xyzw_int p, unsigned long pos, short ((*get_value)(grid* g, unsigned long pos))) {
   set_fg_colour(BLACK);
   unsigned int print_buffer = (g->display_width)/2;
-  if (p.x < g->size.x && p.y < g->size.y && p.z < g->size.z && p.q < g->size.q) {
-    xy_int p2 = xyzq_int_to_xy_int(g, p);
+  if (p.x < g->size.x && p.y < g->size.y && p.z < g->size.z && p.w < g->size.w) {
+    xy_int p2 = xyzw_int_to_xy_int(g, p);
     if (g->mask[pos] > COVERED) {
       if (g->grid[pos] != BOMB) {
         set_bg_colour(RED);
@@ -669,11 +671,11 @@ void print_grid_uncovered(grid* g, short ((*get_value)(grid* g, unsigned long po
   set_fg_colour(BLACK);
   printf("\e[0m");
   remove_grid(g);
-  for (int q = 0; q < g->size.q; q++) {
+  for (int w = 0; w < g->size.w; w++) {
     for (int z = 0; z < g->size.z; z++) {
       for (int y = 0; y < g->size.y; y++) {
         for (int x = 0; x < g->size.x; x++) {
-          xyzq_int p = {x, y, z, q};
+          xyzw_int p = {x, y, z, w};
           unsigned long pos = grid_pos(g, p);
           if (g->mask[pos] == COVERED) {
             g->mask[pos] = UNCOVERED;
@@ -687,9 +689,9 @@ void print_grid_uncovered(grid* g, short ((*get_value)(grid* g, unsigned long po
   }
 }
 
-void uncover_field(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos)));
+void uncover_field(grid* g, xyzw_int p, short ((*get_value)(grid* g, unsigned long pos)));
 
-void uncover_field(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
+void uncover_field(grid* g, xyzw_int p, short ((*get_value)(grid* g, unsigned long pos))) {
   if (g->recusion_depth) {
     unsigned long pos = grid_pos(g, p);
     if (g->mask[pos] == COVERED) {
@@ -705,16 +707,16 @@ void uncover_field(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned lo
         p.x -= 1;
         p.y -= 1;
         p.z -= 1;
-        p.q -= 1;
-        for (int q = 0; q < 3; q++) {
-          if (p.q+q >= 0 && p.q+q < g->size.q) {
+        p.w -= 1;
+        for (int w = 0; w < 3; w++) {
+          if (p.w+w >= 0 && p.w+w < g->size.w) {
             for (int z = 0; z < 3; z++) {
               if (p.z+z >= 0 && p.z+z < g->size.z) {
                 for (int y = 0; y < 3; y++) {
                   if (p.y+y >= 0 && p.y+y < g->size.y) {
                     for (int x = 0; x < 3; x++) {
                       if (p.x+x >= 0 && p.x+x < g->size.x) {
-                        xyzq_int p2 = {p.x+x, p.y+y, p.z+z, p.q+q};
+                        xyzw_int p2 = {p.x+x, p.y+y, p.z+z, p.w+w};
                         pos = grid_pos(g, p2);
                         if (g->mask[pos] == COVERED) {
                           uncover_field(g, p2, (*get_value));
@@ -734,16 +736,16 @@ void uncover_field(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned lo
         p.x -= 1;
         p.y -= 1;
         p.z -= 1;
-        p.q -= 1;
-        for (int q = 0; q < 3; q++) {
-          if (p.q+q >= 0 && p.q+q < g->size.q) {
+        p.w -= 1;
+        for (int w = 0; w < 3; w++) {
+          if (p.w+w >= 0 && p.w+w < g->size.w) {
             for (int z = 0; z < 3; z++) {
               if (p.z+z >= 0 && p.z+z < g->size.z) {
                 for (int y = 0; y < 3; y++) {
                   if (p.y+y >= 0 && p.y+y < g->size.y) {
                     for (int x = 0; x < 3; x++) {
                       if (p.x+x >= 0 && p.x+x < g->size.x) {
-                        xyzq_int p2 = {p.x+x, p.y+y, p.z+z, p.q+q};
+                        xyzw_int p2 = {p.x+x, p.y+y, p.z+z, p.w+w};
                         pos = grid_pos(g, p2);
                         if (g->mask[pos] == COVERED) {
                           g->mask[pos] = UNCOVERED;
@@ -769,11 +771,11 @@ void uncover_field(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned lo
 }
 
 short find_empty(grid* g, short ((*get_value)(grid* g, unsigned long pos))) {
-  for (int q = 0; q < g->size.q; q++) {
+  for (int w = 0; w < g->size.w; w++) {
     for (int z = 0; z < g->size.z; z++) {
       for (int y = 0; y < g->size.y; y++) {
         for (int x = 0; x < g->size.x; x++) {
-          xyzq_int p = {x, y, z, q};
+          xyzw_int p = {x, y, z, w};
           if (grid_at(g, p) == 0) {
             uncover_field(g, p, get_value);
             return 0;
@@ -788,11 +790,11 @@ short find_empty(grid* g, short ((*get_value)(grid* g, unsigned long pos))) {
 xy_int find_biggest_number(grid* g) {
   int bn = 0;
   int sn = 0;
-  for (int q = 0; q < g->size.q; q++) {
+  for (int w = 0; w < g->size.w; w++) {
     for (int z = 0; z < g->size.z; z++) {
       for (int y = 0; y < g->size.y; y++) {
         for (int x = 0; x < g->size.x; x++) {
-          xyzq_int p = {x, y, z, q};
+          xyzw_int p = {x, y, z, w};
           unsigned long pos = grid_pos(g, p);
           if (g->grid[pos] > bn) {
             bn = g->grid[pos];
@@ -817,8 +819,8 @@ void inc_delta(grid* g, unsigned long pos) {
   g->delta[pos]++;
 }
 
-void mark_field(grid* g, xyzq_int p) {
-  if (p.x < g->size.x && p.y < g->size.y && p.z < g->size.z && p.q < g->size.q) {
+void mark_field(grid* g, xyzw_int p) {
+  if (p.x < g->size.x && p.y < g->size.y && p.z < g->size.z && p.w < g->size.w) {
     void (*change_delta)(grid* g, unsigned long pos) = NULL;
     unsigned long pos = grid_pos(g, p);
     if (g->mask[pos] > COVERED) {
@@ -833,16 +835,16 @@ void mark_field(grid* g, xyzq_int p) {
     p.x -= 1;
     p.y -= 1;
     p.z -= 1;
-    p.q -= 1;
-    for (int q = 0; q < 3; q++) {
-      if (p.q+q >= 0 && p.q+q < g->size.q) {
+    p.w -= 1;
+    for (int w = 0; w < 3; w++) {
+      if (p.w+w >= 0 && p.w+w < g->size.w) {
         for (int z = 0; z < 3; z++) {
           if (p.z+z >= 0 && p.z+z < g->size.z) {
             for (int y = 0; y < 3; y++) {
               if (p.y+y >= 0 && p.y+y < g->size.y) {
                 for (int x = 0; x < 3; x++) {
                   if (p.x+x >= 0 && p.x+x < g->size.x) {
-                    xyzq_int p2 = {p.x+x, p.y+y, p.z+z, p.q+q};
+                    xyzw_int p2 = {p.x+x, p.y+y, p.z+z, p.w+w};
                     pos = grid_pos(g, p2);
                     (*change_delta)(g, pos);
                   }
@@ -856,7 +858,7 @@ void mark_field(grid* g, xyzq_int p) {
   }
 }
 
-void mark_field_chording(grid* g, xyzq_int p) {
+void mark_field_chording(grid* g, xyzw_int p) {
   unsigned long pos = grid_pos(g, p);
   if (g->mask[pos] >= COVERED) {
     void (*change_delta)(grid* g, unsigned long pos) = NULL;
@@ -872,16 +874,16 @@ void mark_field_chording(grid* g, xyzq_int p) {
     p.x -= 1;
     p.y -= 1;
     p.z -= 1;
-    p.q -= 1;
-    for (int q = 0; q < 3; q++) {
-      if (p.q+q >= 0 && p.q+q < g->size.q) {
+    p.w -= 1;
+    for (int w = 0; w < 3; w++) {
+      if (p.w+w >= 0 && p.w+w < g->size.w) {
         for (int z = 0; z < 3; z++) {
           if (p.z+z >= 0 && p.z+z < g->size.z) {
             for (int y = 0; y < 3; y++) {
               if (p.y+y >= 0 && p.y+y < g->size.y) {
                 for (int x = 0; x < 3; x++) {
                   if (p.x+x >= 0 && p.x+x < g->size.x) {
-                    xyzq_int p2 = {p.x+x, p.y+y, p.z+z, p.q+q};
+                    xyzw_int p2 = {p.x+x, p.y+y, p.z+z, p.w+w};
                     pos = grid_pos(g, p2);
                     (*change_delta)(g, pos);
                   }
@@ -895,7 +897,7 @@ void mark_field_chording(grid* g, xyzq_int p) {
   }
 }
 
-void set_checkered_bg_cursor(grid* g, xyzq_int p, unsigned long pos) {
+void set_checkered_bg_cursor(grid* g, xyzw_int p, unsigned long pos) {
   if ((p.x+p.y%2)%2) {
     if (g->mask[pos] > UNCOVERED) {
       set_bg_colour(COVERED_PINK_DARK);
@@ -911,25 +913,25 @@ void set_checkered_bg_cursor(grid* g, xyzq_int p, unsigned long pos) {
   }
 }
 
-void print_cursor(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
+void print_cursor(grid* g, xyzw_int p, short ((*get_value)(grid* g, unsigned long pos))) {
   set_bg_colour(PINK);
   print_field(g, p, (*get_value), 1);
 }
 
-void print_area_of_influence(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
+void print_area_of_influence(grid* g, xyzw_int p, short ((*get_value)(grid* g, unsigned long pos))) {
   p.x -= 1;
   p.y -= 1;
   p.z -= 1;
-  p.q -= 1;
-  for (int q = 0; q < 3; q++) {
-    if (p.q+q >= 0 && p.q+q < g->size.q) {
+  p.w -= 1;
+  for (int w = 0; w < 3; w++) {
+    if (p.w+w >= 0 && p.w+w < g->size.w) {
       for (int z = 0; z < 3; z++) {
         if (p.z+z >= 0 && p.z+z < g->size.z) {
           for (int y = 0; y < 3; y++) {
             if (p.y+y >= 0 && p.y+y < g->size.y) {
               for (int x = 0; x < 3; x++) {
                 if (p.x+x >= 0 && p.x+x < g->size.x) {
-                  xyzq_int p2 = {p.x+x, p.y+y, p.z+z, p.q+q};
+                  xyzw_int p2 = {p.x+x, p.y+y, p.z+z, p.w+w};
                   unsigned long pos = grid_pos(g, p2);
                   set_checkered_bg_cursor(g, p2, pos);
                   print_field(g, p2, (*get_value), 1);
@@ -943,30 +945,30 @@ void print_area_of_influence(grid* g, xyzq_int p, short ((*get_value)(grid* g, u
   }
 }
 
-void print_cursor_all(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
+void print_cursor_all(grid* g, xyzw_int p, short ((*get_value)(grid* g, unsigned long pos))) {
   print_area_of_influence(g, p, get_value);
   print_cursor(g, p, get_value);
 }
 
-/*void remove_cursor(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
+/*void remove_cursor(grid* g, xyzw_int p, short ((*get_value)(grid* g, unsigned long pos))) {
   set_checkered_bg(g, p);
   print_field(g, p, (*get_value), 1);
 }*/
 
-void remove_area_of_influence(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
+void remove_area_of_influence(grid* g, xyzw_int p, short ((*get_value)(grid* g, unsigned long pos))) {
   p.x -= 1;
   p.y -= 1;
   p.z -= 1;
-  p.q -= 1;
-  for (int q = 0; q < 3; q++) {
-    if (p.q+q >= 0 && p.q+q < g->size.q) {
+  p.w -= 1;
+  for (int w = 0; w < 3; w++) {
+    if (p.w+w >= 0 && p.w+w < g->size.w) {
       for (int z = 0; z < 3; z++) {
         if (p.z+z >= 0 && p.z+z < g->size.z) {
           for (int y = 0; y < 3; y++) {
             if (p.y+y >= 0 && p.y+y < g->size.y) {
               for (int x = 0; x < 3; x++) {
                 if (p.x+x >= 0 && p.x+x < g->size.x) {
-                  xyzq_int p2 = {p.x+x, p.y+y, p.z+z, p.q+q};
+                  xyzw_int p2 = {p.x+x, p.y+y, p.z+z, p.w+w};
                   set_checkered_bg(g, p2);
                   print_field(g, p2, (*get_value), 1);
                 }
@@ -979,25 +981,25 @@ void remove_area_of_influence(grid* g, xyzq_int p, short ((*get_value)(grid* g, 
   }
 }
 
-void print_cursor_paused(grid* g, xyzq_int p) {
+void print_cursor_paused(grid* g, xyzw_int p) {
   set_bg_colour(PINK);
   print_field_paused(g, p);
 }
 
-void print_area_of_influence_paused(grid* g, xyzq_int p) {
+void print_area_of_influence_paused(grid* g, xyzw_int p) {
   p.x -= 1;
   p.y -= 1;
   p.z -= 1;
-  p.q -= 1;
-  for (int q = 0; q < 3; q++) {
-    if (p.q+q >= 0 && p.q+q < g->size.q) {
+  p.w -= 1;
+  for (int w = 0; w < 3; w++) {
+    if (p.w+w >= 0 && p.w+w < g->size.w) {
       for (int z = 0; z < 3; z++) {
         if (p.z+z >= 0 && p.z+z < g->size.z) {
           for (int y = 0; y < 3; y++) {
             if (p.y+y >= 0 && p.y+y < g->size.y) {
               for (int x = 0; x < 3; x++) {
                 if (p.x+x >= 0 && p.x+x < g->size.x) {
-                  xyzq_int p2 = {p.x+x, p.y+y, p.z+z, p.q+q};
+                  xyzw_int p2 = {p.x+x, p.y+y, p.z+z, p.w+w};
                   unsigned long pos = grid_pos(g, p2);
                   if ((p2.x+p2.y%2)%2) {
                     set_bg_colour(PAUSED_PINK_DARK);
@@ -1015,30 +1017,30 @@ void print_area_of_influence_paused(grid* g, xyzq_int p) {
   }
 }
 
-void print_cursor_paused_all(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
+void print_cursor_paused_all(grid* g, xyzw_int p, short ((*get_value)(grid* g, unsigned long pos))) {
   print_area_of_influence_paused(g, p);
   print_cursor_paused(g, p);
 }
 
-/*void remove_cursor_paused(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
+/*void remove_cursor_paused(grid* g, xyzw_int p, short ((*get_value)(grid* g, unsigned long pos))) {
   set_checkered_bg_paused(g, p);
   print_field_paused(g, p);
 }*/
 
-void remove_area_of_influence_paused(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
+void remove_area_of_influence_paused(grid* g, xyzw_int p, short ((*get_value)(grid* g, unsigned long pos))) {
   p.x -= 1;
   p.y -= 1;
   p.z -= 1;
-  p.q -= 1;
-  for (int q = 0; q < 3; q++) {
-    if (p.q+q >= 0 && p.q+q < g->size.q) {
+  p.w -= 1;
+  for (int w = 0; w < 3; w++) {
+    if (p.w+w >= 0 && p.w+w < g->size.w) {
       for (int z = 0; z < 3; z++) {
         if (p.z+z >= 0 && p.z+z < g->size.z) {
           for (int y = 0; y < 3; y++) {
             if (p.y+y >= 0 && p.y+y < g->size.y) {
               for (int x = 0; x < 3; x++) {
                 if (p.x+x >= 0 && p.x+x < g->size.x) {
-                  xyzq_int p2 = {p.x+x, p.y+y, p.z+z, p.q+q};
+                  xyzw_int p2 = {p.x+x, p.y+y, p.z+z, p.w+w};
                   set_checkered_bg_paused(g, p2);
                   print_field_paused(g, p2);
                 }
@@ -1051,20 +1053,20 @@ void remove_area_of_influence_paused(grid* g, xyzq_int p, short ((*get_value)(gr
   }
 }
 
-void print_area_of_influence_uncovered(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
+void print_area_of_influence_uncovered(grid* g, xyzw_int p, short ((*get_value)(grid* g, unsigned long pos))) {
   p.x -= 1;
   p.y -= 1;
   p.z -= 1;
-  p.q -= 1;
-  for (int q = 0; q < 3; q++) {
-    if (p.q+q >= 0 && p.q+q < g->size.q) {
+  p.w -= 1;
+  for (int w = 0; w < 3; w++) {
+    if (p.w+w >= 0 && p.w+w < g->size.w) {
       for (int z = 0; z < 3; z++) {
         if (p.z+z >= 0 && p.z+z < g->size.z) {
           for (int y = 0; y < 3; y++) {
             if (p.y+y >= 0 && p.y+y < g->size.y) {
               for (int x = 0; x < 3; x++) {
                 if (p.x+x >= 0 && p.x+x < g->size.x) {
-                  xyzq_int p2 = {p.x+x, p.y+y, p.z+z, p.q+q};
+                  xyzw_int p2 = {p.x+x, p.y+y, p.z+z, p.w+w};
                   unsigned long pos = grid_pos(g, p2);
                   set_checkered_bg_cursor(g, p2, pos);
                   print_field_uncovered(g, p2, pos, get_value);
@@ -1078,25 +1080,25 @@ void print_area_of_influence_uncovered(grid* g, xyzq_int p, short ((*get_value)(
   }
 }
 
-void print_cursor_uncovered_all(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
+void print_cursor_uncovered_all(grid* g, xyzw_int p, short ((*get_value)(grid* g, unsigned long pos))) {
   print_area_of_influence_uncovered(g, p, get_value);
   print_cursor(g, p, get_value);
 }
 
-void remove_area_of_influence_uncovered(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos))) {
+void remove_area_of_influence_uncovered(grid* g, xyzw_int p, short ((*get_value)(grid* g, unsigned long pos))) {
   p.x -= 1;
   p.y -= 1;
   p.z -= 1;
-  p.q -= 1;
-  for (int q = 0; q < 3; q++) {
-    if (p.q+q >= 0 && p.q+q < g->size.q) {
+  p.w -= 1;
+  for (int w = 0; w < 3; w++) {
+    if (p.w+w >= 0 && p.w+w < g->size.w) {
       for (int z = 0; z < 3; z++) {
         if (p.z+z >= 0 && p.z+z < g->size.z) {
           for (int y = 0; y < 3; y++) {
             if (p.y+y >= 0 && p.y+y < g->size.y) {
               for (int x = 0; x < 3; x++) {
                 if (p.x+x >= 0 && p.x+x < g->size.x) {
-                  xyzq_int p2 = {p.x+x, p.y+y, p.z+z, p.q+q};
+                  xyzw_int p2 = {p.x+x, p.y+y, p.z+z, p.w+w};
                   set_checkered_bg(g, p2);
                   print_field_uncovered(g, p2, grid_pos(g, p2), get_value);
                 }
@@ -1277,8 +1279,8 @@ grid* print_settings(option* op, grid* g) {
         break;
       case 111: //o
         free(g);
-        xyzq_int size = {op[1].value, op[2].value, op[3].value, op[4].value};
-        print_xyzq(size);
+        xyzw_int size = {op[1].value, op[2].value, op[3].value, op[4].value};
+        //print_xyzw(size);
         g = create_grid(size, op[7].value, (op[5].value)?time(0):op[6].value, op[8].value);
         free(backup);
         return g;
@@ -1340,7 +1342,7 @@ void exit_game_failure() {
 int main(int argc, char** argv) {
   unsigned int seed = time(0);
   short do_random = 1;
-  xyzq_int size = {4, 4, 4, 4};
+  xyzw_int size = {4, 4, 4, 4};
   unsigned int bombs = 20;
   unsigned int recursion_depth = 1000;
   short show_info = 1;
@@ -1453,12 +1455,12 @@ int main(int argc, char** argv) {
           exit_game_failure();
         }
         i++;
-        size.q = strtol(argv[i], &endptr, 10);
+        size.w = strtol(argv[i], &endptr, 10);
         if (endptr == argv[i]) {
-          printf("No digits were found in option %s %s for size q.\n", og, argv[i]);
+          printf("No digits were found in option %s %s for size w.\n", og, argv[i]);
           exit_game_failure();
-        } else if (size.q < 0) {
-          printf("Negative size q of %d was provided!\nPlease provide a positive integer", size.q);
+        } else if (size.w < 0) {
+          printf("Negative size w of %d was provided!\nPlease provide a positive integer", size.w);
           exit_game_failure();
         }
       } else if (strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--show_info") == 0) {
@@ -1507,7 +1509,7 @@ int main(int argc, char** argv) {
     {1, size.x, 2, UINT, "x"},
     {1, size.y, 2, UINT, "y"},
     {1, size.z, 2, UINT, "z"},
-    {1, size.q, 2, UINT, "q"},
+    {1, size.w, 2, UINT, "w"},
     {1, do_random, 0, BOOL, "Do random"},
     {1, seed, 2, UINT, "Seed"},
     {1, bombs, 0, UINT, "Bombs"},
@@ -1518,8 +1520,8 @@ int main(int argc, char** argv) {
   };
 
   short (*get_value)(grid* g, unsigned long pos) = NULL;
-  void (*print_cursor_func)(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos)));
-  void (*remove_cursor_func)(grid* g, xyzq_int p, short ((*get_value)(grid* g, unsigned long pos)));
+  void (*print_cursor_func)(grid* g, xyzw_int p, short ((*get_value)(grid* g, unsigned long pos)));
+  void (*remove_cursor_func)(grid* g, xyzw_int p, short ((*get_value)(grid* g, unsigned long pos)));
   if (op[10].value) {
     get_value = delta_value;
   } else {
@@ -1535,7 +1537,7 @@ int main(int argc, char** argv) {
   }
   unsigned int display_width = g->display_width;
   print_grid(g, get_value);
-  xyzq_int cursor = {0, 0, 0, 0};
+  xyzw_int cursor = g->cursor;
   (*print_cursor_func)(g, cursor, get_value);
   timer t = {(xy_int){(g->size.z*(g->size.x+1))*g->display_width+2, 7}, g};
   pthread_t timerthread;
@@ -1630,15 +1632,15 @@ int main(int argc, char** argv) {
         break;
       case 115: //s
       case 10: //ctrl+j
-        if (cursor.q+1 < g->size.q) {
-          cursor.q += 1;
+        if (cursor.w+1 < g->size.w) {
+          cursor.w += 1;
         }
         c = 0;
         break;
       case 119: //w
       case 11: //ctrl+k
-        if (cursor.q-1 >= 0) {
-          cursor.q -= 1;
+        if (cursor.w-1 >= 0) {
+          cursor.w -= 1;
         }
         c = 0;
         break;
@@ -1687,16 +1689,16 @@ int main(int argc, char** argv) {
           cursor.x--;
           cursor.y--;
           cursor.z--;
-          cursor.q--;
-          for (int q = 0; q < 3; q++) {
-            if (cursor.q+q >= 0 && cursor.q+q < g->size.q) {
+          cursor.w--;
+          for (int w = 0; w < 3; w++) {
+            if (cursor.w+w >= 0 && cursor.w+w < g->size.w) {
               for (int z = 0; z < 3; z++) {
                 if (cursor.z+z >= 0 && cursor.z+z < g->size.z) {
                   for (int y = 0; y < 3; y++) {
                     if (cursor.y+y >= 0 && cursor.y+y < g->size.y) {
                       for (int x = 0; x < 3; x++) {
                         if (cursor.x+x >= 0 && cursor.x+x < g->size.x) {
-                          xyzq_int p2 = {cursor.x+x, cursor.y+y, cursor.z+z, cursor.q+q};
+                          xyzw_int p2 = {cursor.x+x, cursor.y+y, cursor.z+z, cursor.w+w};
                           mark_field_chording(g, p2);
                         }
                       }
@@ -1709,7 +1711,7 @@ int main(int argc, char** argv) {
           cursor.x++;
           cursor.y++;
           cursor.z++;
-          cursor.q++;
+          cursor.w++;
           xy_int bn = find_biggest_number(g);
           display_width = (op[10].value)?(bn.x > bn.y)?bn.x:bn.y:bn.x;
           if (g->display_width != display_width) {
@@ -1799,22 +1801,29 @@ int main(int argc, char** argv) {
           if (op[9].value) pthread_cancel(timerthread);
         }
         g = print_settings(op, g);
+        printf("\e[0m\e[2J");
+        t = (timer){(xy_int){(g->size.z*(g->size.x+1))*g->display_width+2, 7}, g};
+        cursor = g->cursor;
         if (continue_after) {
           g->state = RUNNING;
           g->paused = time(0);
           if (op[9].value) pthread_create(&timerthread, NULL, update_time_elapsed, &t);
           print_grid(g, get_value);
         } else {
+          g->state = PAUSED;
           print_grid_paused(g);
         }
-        if (op[9].value) print_info(g);
+        if (op[9].value) {
+          print_paused_time_elapsed(g, t.pos);
+          print_info(g);
+        }
         c = 0;
         break;
       case 110: //n
         game_running = 1;
         int game_state = g->state;
         free(g);
-        size = (xyzq_int){op[1].value, op[2].value, op[3].value, op[4].value};
+        size = (xyzw_int){op[1].value, op[2].value, op[3].value, op[4].value};
         g = create_grid(size, op[7].value, (op[5].value)?time(0):op[6].value, op[8].value);
         print_cursor_func = print_cursor_all;
         remove_cursor_func = remove_area_of_influence;
@@ -1824,6 +1833,7 @@ int main(int argc, char** argv) {
         g->offset = 0;
         g->paused = time(0);
         t = (timer){(xy_int){(g->size.z*(g->size.x+1))*g->display_width+2, 7}, g};
+        cursor = g->cursor;
         if (op[9].value) {
           print_info(g);
           print_timer(&t);
