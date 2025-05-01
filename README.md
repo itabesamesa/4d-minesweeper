@@ -2,13 +2,13 @@
 
 4d minesweeper made for the terminal
 
-https://github.com/user-attachments/assets/e213d4ac-162e-486d-b00c-a47d5d4c2fa0
+![A video of a game of 4d minesweeper](https://github.com/user-attachments/assets/e213d4ac-162e-486d-b00c-a47d5d4c2fa0)
 
 ## How to play
 
 You have to find all the mines in a 4 dimensional field. The pink cursor highlights the current field you're on and its value shows the number of bombs that are around it. To help you find which fields are in the area of influence of the current field, they are highlighted in a less saturated shade of pink. Have fun finding all the mines!
 
-![A screenshot of a finished game](screenshot2.png)
+![A screenshot of a finished game](screenshot1.png)
 
 ### Controls
 
