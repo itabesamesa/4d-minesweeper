@@ -22,6 +22,7 @@ You have to find all the mines in a 4 dimensional field. The pink cursor highlig
   Move up in q:          w, ctrl-k
   Move down in y:        s, ctrl-j
   Mark bomb:             m, e
+  Mark bomb chording:    M, E
   Uncover field:         space
   Find empty field:      f
   Turn on delta mode:    u
@@ -89,11 +90,12 @@ There are a few extra options you could add, if you don't want to edit the setti
 - [x] Make field shrink after numbers change
 - [ ] Graphical bug in cursor's area of influence when unpausing
 - [ ] Graphical bug with timer, prints to random x position sometimes
+- [ ] Graphical bug with timer, only prints partially
 - [ ] Graphical bug with flags after unpausing
 - [x] Sometimes there is a graphical bug when chording
 - [x] Marking field on game over reveals entire field
 - [x] Hide field when paused
-- [ ] Start timer on first key press
+- [x] Start timer on first key press
 - [x] Add option to reveal field when game is over
 - [x] Make time minutes and seconds
 - [ ] Make uncover field work better in delta mode
@@ -103,7 +105,7 @@ There are a few extra options you could add, if you don't want to edit the setti
 - [x] Timer disappears after new game
 - [x] Implement chording for uncovering fields
 - [ ] Improve chording for uncovering fields
-- [ ] Implement chording for marking fields
+- [x] Implement chording for marking fields
 
 ## Special thanks
 

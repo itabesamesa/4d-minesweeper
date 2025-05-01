@@ -483,7 +483,6 @@ void* update_time_elapsed(void* args) {
   timer* t = args;
   while (1) {
     print_timer(t);
-    //fprintf(stderr, "Time elapsed: %d seconds", (time(0)-t->g->paused)+t->g->offset);
     sleep(1);
   }
 }
@@ -822,6 +821,45 @@ void mark_field(grid* g, xyzq_int p) {
   if (p.x < g->size.x && p.y < g->size.y && p.z < g->size.z && p.q < g->size.q) {
     void (*change_delta)(grid* g, unsigned long pos) = NULL;
     unsigned long pos = grid_pos(g, p);
+    if (g->mask[pos] > COVERED) {
+      g->mask[pos] -= 2; //unflag
+      g->flagged -= 1;
+      change_delta = inc_delta;
+    } else {
+      g->mask[pos] += 2; //flag
+      g->flagged += 1;
+      change_delta = dec_delta;
+    }
+    p.x -= 1;
+    p.y -= 1;
+    p.z -= 1;
+    p.q -= 1;
+    for (int q = 0; q < 3; q++) {
+      if (p.q+q >= 0 && p.q+q < g->size.q) {
+        for (int z = 0; z < 3; z++) {
+          if (p.z+z >= 0 && p.z+z < g->size.z) {
+            for (int y = 0; y < 3; y++) {
+              if (p.y+y >= 0 && p.y+y < g->size.y) {
+                for (int x = 0; x < 3; x++) {
+                  if (p.x+x >= 0 && p.x+x < g->size.x) {
+                    xyzq_int p2 = {p.x+x, p.y+y, p.z+z, p.q+q};
+                    pos = grid_pos(g, p2);
+                    (*change_delta)(g, pos);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+void mark_field_chording(grid* g, xyzq_int p) {
+  unsigned long pos = grid_pos(g, p);
+  if (g->mask[pos] >= COVERED) {
+    void (*change_delta)(grid* g, unsigned long pos) = NULL;
     if (g->mask[pos] > COVERED) {
       g->mask[pos] -= 2; //unflag
       g->flagged -= 1;
@@ -1267,6 +1305,7 @@ void print_controls() {
   move_terminal_cursor_down(); printf("  Move up in q:          w, ctrl-k");
   move_terminal_cursor_down(); printf("  Move down in y:        s, ctrl-j");
   move_terminal_cursor_down(); printf("  Mark bomb:             m, e");
+  move_terminal_cursor_down(); printf("  Mark bomb chording:    M, E");
   move_terminal_cursor_down(); printf("  Uncover field:         \e[3mspace\e[0m");
   move_terminal_cursor_down(); printf("  Find empty field:      f");
   move_terminal_cursor_down(); printf("  Turn on delta mode:    u");
@@ -1503,10 +1542,12 @@ int main(int argc, char** argv) {
   if (op[9].value) {
     print_info(g);
     print_timer(&t);
-    pthread_create(&timerthread, NULL, update_time_elapsed, &t);
   }
+  int c = getchar();
+  g->start = time(0);
+  g->paused = g->start;
+  if (op[9].value) pthread_create(&timerthread, NULL, update_time_elapsed, &t);
   while (1) {
-    int c = getchar();
     remove_cursor_func(g, cursor, get_value);
     //remove_cursor(g, cursor, get_value);
     if (debug_mode) {
@@ -1550,48 +1591,56 @@ int main(int argc, char** argv) {
         if (cursor.x-1 >= 0) {
           cursor.x -= 1;
         }
+        c = 0;
         break;
       case 67: //left arrow
       case 108: //l
         if (cursor.x+1 < g->size.x) {
           cursor.x += 1;
         }
+        c = 0;
         break;
       case 66: //down arrow
       case 106: //j
         if (cursor.y+1 < g->size.y) {
           cursor.y += 1;
         }
+        c = 0;
         break;
       case 65: //up arrow
       case 107: //k
         if (cursor.y-1 >= 0) {
           cursor.y -= 1;
         }
+        c = 0;
         break;
       case 97: //a
       case 8: //ctrl+h
         if (cursor.z-1 >= 0) {
           cursor.z -= 1;
         }
+        c = 0;
         break;
       case 100: //d
       case 12: //ctrl+l
         if (cursor.z+1 < g->size.z) {
           cursor.z += 1;
         }
+        c = 0;
         break;
       case 115: //s
       case 10: //ctrl+j
         if (cursor.q+1 < g->size.q) {
           cursor.q += 1;
         }
+        c = 0;
         break;
       case 119: //w
       case 11: //ctrl+k
         if (cursor.q-1 >= 0) {
           cursor.q -= 1;
         }
+        c = 0;
         break;
       case 32: //*space*
         if (g->state != PAUSED) {
@@ -1608,6 +1657,7 @@ int main(int argc, char** argv) {
             if (op[9].value) print_info(g);
           }
         }
+        c = 0;
         break;
       case 101: //e
       case 109: //m
@@ -1621,14 +1671,62 @@ int main(int argc, char** argv) {
             printf("\e[2J");
             t.pos = (xy_int){(g->size.z*(g->size.x+1))*g->display_width+2, 7};
             print_timer(&t);
-          }
-          if (g->state == GAVE_UP || g->state == REVEAL_FIELD) {
-            print_grid_uncovered(g, get_value);
-          } else {
-            print_grid(g, get_value);
+            if (g->state == GAVE_UP || g->state == REVEAL_FIELD) {
+              print_grid_uncovered(g, get_value);
+            } else {
+              print_grid(g, get_value);
+            }
           }
           if (op[9].value) print_info(g);
         }
+        c = 0;
+        break;
+      case 69: //E
+      case 77: //M
+        if (g->state != PAUSED) {
+          cursor.x--;
+          cursor.y--;
+          cursor.z--;
+          cursor.q--;
+          for (int q = 0; q < 3; q++) {
+            if (cursor.q+q >= 0 && cursor.q+q < g->size.q) {
+              for (int z = 0; z < 3; z++) {
+                if (cursor.z+z >= 0 && cursor.z+z < g->size.z) {
+                  for (int y = 0; y < 3; y++) {
+                    if (cursor.y+y >= 0 && cursor.y+y < g->size.y) {
+                      for (int x = 0; x < 3; x++) {
+                        if (cursor.x+x >= 0 && cursor.x+x < g->size.x) {
+                          xyzq_int p2 = {cursor.x+x, cursor.y+y, cursor.z+z, cursor.q+q};
+                          mark_field_chording(g, p2);
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          cursor.x++;
+          cursor.y++;
+          cursor.z++;
+          cursor.q++;
+          xy_int bn = find_biggest_number(g);
+          display_width = (op[10].value)?(bn.x > bn.y)?bn.x:bn.y:bn.x;
+          if (g->display_width != display_width) {
+            g->display_width = display_width;
+            printf("\e[0m");
+            printf("\e[2J");
+            t.pos = (xy_int){(g->size.z*(g->size.x+1))*g->display_width+2, 7};
+            print_timer(&t);
+            if (g->state == GAVE_UP || g->state == REVEAL_FIELD) {
+              print_grid_uncovered(g, get_value);
+            } else {
+              print_grid(g, get_value);
+            }
+          }
+          if (op[9].value) print_info(g);
+        }
+        c = 0;
         break;
       case 117: //u
         if (op[10].value) {
@@ -1648,6 +1746,7 @@ int main(int argc, char** argv) {
         }
         print_grid(g, get_value);
         if (op[9].value) print_info(g);
+        c = 0;
         break;
       case 103: //g
         if (g->state != PAUSED && g->state < GAVE_UP) {
@@ -1667,6 +1766,7 @@ int main(int argc, char** argv) {
             print_info(g);
           }
         }
+        c = 0;
         break;
       case 112: {//p
         if (g->state == RUNNING) {
@@ -1688,6 +1788,7 @@ int main(int argc, char** argv) {
           print_grid(g, get_value);
         }
         if (op[9].value) print_info(g);
+        c = 0;
         break;
       } case 111: //o
         short continue_after = 0;
@@ -1707,6 +1808,7 @@ int main(int argc, char** argv) {
           print_grid_paused(g);
         }
         if (op[9].value) print_info(g);
+        c = 0;
         break;
       case 110: //n
         game_running = 1;
@@ -1725,8 +1827,12 @@ int main(int argc, char** argv) {
         if (op[9].value) {
           print_info(g);
           print_timer(&t);
-          if (game_state != RUNNING) pthread_create(&timerthread, NULL, update_time_elapsed, &t);
         }
+        (*print_cursor_func)(g, cursor, get_value);
+        c = getchar();
+        g->start = time(0);
+        g->paused = g->start;
+        if (op[9].value) pthread_create(&timerthread, NULL, update_time_elapsed, &t);
         break;
       case 99: //c
         continue_after = 0;
@@ -1749,6 +1855,7 @@ int main(int argc, char** argv) {
           print_grid_paused(g);
         }
         if (op[9].value) print_info(g);
+        c = 0;
         break;
       case 102: //f
         if (g->uncovered == 0 && g->state == RUNNING) {
@@ -1758,6 +1865,7 @@ int main(int argc, char** argv) {
             if (op[9].value) print_info(g);
           }
         }
+        c = 0;
         break;
       case 105: //i
         if (op[9].value) {
@@ -1769,12 +1877,15 @@ int main(int argc, char** argv) {
           print_info(g);
           pthread_create(&timerthread, NULL, update_time_elapsed, &t);
         }
+        c = 0;
         break;
       case 113: //q
         exit_game();
         free(g);
         exit(EXIT_SUCCESS);
+      default:
+        (*print_cursor_func)(g, cursor, get_value);
+        c = getchar();
     }
-    (*print_cursor_func)(g, cursor, get_value);
   }
 }
