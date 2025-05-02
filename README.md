@@ -46,6 +46,11 @@ gcc main.c mtwister.c -lm -o 4dminsweeper
 > [!WARNING]
 > This program was made for Linux, i doubt that it would work on windows
 
+> [!WARNING]
+> This program was only tested on Arch Linux!
+> According to this [issue](https://stackoverflow.com/questions/1662909/undefined-reference-to-pthread-create-in-linux), you have to add `-pthread` on Ubuntu systems e.g.: `gcc main.c mtwister.c -lm -pthread -o 4dminsweeper
+`
+
 To run the program, simply type:
 
 ```
