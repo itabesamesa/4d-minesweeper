@@ -1587,6 +1587,7 @@ int main(int argc, char** argv) {
         fprintf(stderr, "%d\n", g->display_width);
       }
     }
+    short continue_after = 0;
     switch (c) {
       case 68: //right arrow
       case 104: //h
@@ -1792,8 +1793,7 @@ int main(int argc, char** argv) {
         if (op[9].value) print_info(g);
         c = 0;
         break;
-      } case 111: {//o
-        short continue_after = 0;
+      } case 111: //o
         if (g->state == RUNNING) {
           continue_after = 1;
           g->state = PAUSED;
@@ -1819,7 +1819,7 @@ int main(int argc, char** argv) {
         }
         c = 0;
         break;
-      } case 110: //n
+      case 110: //n
         game_running = 1;
         int game_state = g->state;
         free(g);
