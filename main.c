@@ -425,9 +425,9 @@ void print_info(grid* g) {
   p.y += 1;
   print_at(p); printf("Seed: %d", g->seed);
   p.y += 1;
-  print_at(p); printf("Fields uncovered: %d/%d", g->uncovered, g->len-g->bombs);
+  print_at(p); printf("Fields uncovered: %lu/%lu", g->uncovered, g->len-g->bombs);
   p.y += 1;
-  print_at(p); printf("Bombs flagged: %d/%d", g->flagged, g->bombs);
+  print_at(p); printf("Bombs flagged: %lu/%lu", g->flagged, g->bombs);
   p.y += 1;
   print_at(p); printf("Started at: %s", ctime(&g->start));
   p.y += 1;
@@ -1792,7 +1792,7 @@ int main(int argc, char** argv) {
         if (op[9].value) print_info(g);
         c = 0;
         break;
-      } case 111: //o
+      } case 111: {//o
         short continue_after = 0;
         if (g->state == RUNNING) {
           continue_after = 1;
@@ -1819,7 +1819,7 @@ int main(int argc, char** argv) {
         }
         c = 0;
         break;
-      case 110: //n
+      } case 110: //n
         game_running = 1;
         int game_state = g->state;
         free(g);
