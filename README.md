@@ -24,7 +24,7 @@ You have to find all the mines in a 4 dimensional field. The pink cursor highlig
   Mark bomb:             m, e
   Mark bomb chording:    M, E
   Uncover field:         space
-  Find empty field:      f
+  Find empty field:      f (only possible at the start of the game)
   Turn on delta mode:    u
   Give up/reveal field:  g
   Pause game:            p

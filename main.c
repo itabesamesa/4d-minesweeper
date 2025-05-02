@@ -1309,7 +1309,7 @@ void print_controls() {
   move_terminal_cursor_down(); printf("  Mark bomb:             m, e");
   move_terminal_cursor_down(); printf("  Mark bomb chording:    M, E");
   move_terminal_cursor_down(); printf("  Uncover field:         \e[3mspace\e[0m");
-  move_terminal_cursor_down(); printf("  Find empty field:      f");
+  move_terminal_cursor_down(); printf("  Find empty field:      f (only possible at the start of the game)");
   move_terminal_cursor_down(); printf("  Turn on delta mode:    u");
   move_terminal_cursor_down(); printf("  Give up/reveal field:  g");
   move_terminal_cursor_down(); printf("  Pause game:            p");
