@@ -76,6 +76,7 @@ There are a few extra options you could add, if you don't want to edit the setti
 
 > [!TIP]
 > When running the program in debug mode, make sure to send the error messages somewhere else by appending `2> [file descriptor]` to the command e.g.: `./4dminesweeper -g 2> error.txt`
+
 > [!TIP]
 > To send the error messages to a different terminal, go to said terminal and type `tty`. This will return something like `/dev/pts/[number]` (e.g.: `/dev/pts/2`). Now you have the _file descriptor_ of that terminal. Now you can use `2>` to send everything that is printed to standard error, to whatever you put after it (e.g.: the _file descriptor_ of a terminal). (For your information: I still consider myself a Linux noob. I am pretty sure all the information I have provided is correct. Please do your own research! A good place to start is the [Arch wiki](https://wiki.archlinux.org) or any of the many Linux forums)
 
