@@ -35,6 +35,9 @@ You have to find all the mines in a 4 dimensional field. The pink cursor highlig
   Quit game:             q
 </pre>
 
+> [!WARNING]
+> This program may run into a segmentation fault in the year 10000. This is due to the fact, that the `save_game_to_file` function has a fixed length for the file name
+
 ## Compiling and running
 
 To compile the program, simply run:
@@ -45,6 +48,9 @@ gcc main.c mtwister.c -lm -o 4dminsweeper
 
 > [!WARNING]
 > This program was made for Linux, i doubt that it would work on windows
+
+> [!TIP]
+> If you want to try it on windows, you could try using [WSL](https://learn.microsoft.com/en-us/windows/wsl/). (I have not tested this, I don't know if it will work...)
 
 > [!WARNING]
 > This program was only tested on Arch Linux!
@@ -72,6 +78,7 @@ There are a few extra options you could add, if you don't want to edit the setti
   -i, --show_info        Show info about the current game. Can be set to true or false
   -u, --show_delta       Field numbers only show unmarked bombs instead of total. Can be set to true or false
   -g, --debug            Run in debug mode. Allows editing of field contents
+  -l, --load             Load game from save file
 </pre>
 
 > [!TIP]
@@ -114,6 +121,9 @@ There are a few extra options you could add, if you don't want to edit the setti
 - [x] Implement chording for uncovering fields
 - [ ] Improve chording for uncovering fields
 - [x] Implement chording for marking fields
+- [x] Change title to 4d minesweeper
+- [x] Save game state
+- [ ] Restore game from save file
 
 ## Special thanks
 

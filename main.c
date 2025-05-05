@@ -33,7 +33,7 @@ typedef struct _grid {
   time_t start;
   time_t paused;
   time_t offset;
-  unsigned int recusion_depth;
+  unsigned int recursion_depth;
   short* mask;
   short* delta;
   short grid[];
@@ -135,7 +135,7 @@ set_input_mode (void)
 
 void exit_game() {
   printf("\e[0m");
-  printf("\e[2J");
+  printf("\e[?47l");
   printf("\e[?25h");
   printf("\e[u");
 }
@@ -193,6 +193,236 @@ void grid_inc_if_above_at(grid* g, xyzw_int p, short threshold) {
       g->display_width = numwidth+1;
     }
   }
+}
+
+xy_int find_biggest_number(grid* g) {
+  int bn = 0;
+  int sn = 0;
+  for (int w = 0; w < g->size.w; w++) {
+    for (int z = 0; z < g->size.z; z++) {
+      for (int y = 0; y < g->size.y; y++) {
+        for (int x = 0; x < g->size.x; x++) {
+          xyzw_int p = {x, y, z, w};
+          unsigned long pos = grid_pos(g, p);
+          if (g->grid[pos] > bn) {
+            bn = g->grid[pos];
+          }
+          if (g->delta[pos] < sn && g->delta[pos] < 0 && g->grid[pos] != BOMB) {
+            sn = g->delta[pos];
+          }
+        }
+      }
+    }
+  }
+  bn = log10(bn)+1;
+  sn = log10(-sn)+2;
+  return (xy_int){(bn < 2)?2:bn, (sn < 2)?2:sn};
+}
+
+char* save_game_to_file(grid* g) {
+  char filename = malloc(34);
+  struct tm* tm_info = localtime(&g->start);
+  strftime(filename, 34, "%Y-%m-%d_%H:%M:%S.4dminesweeper", tm_info);
+  fprintf(stderr, "%s\n", filename);
+  FILE* f = fopen(filename, "w");
+  if (f == NULL) {
+    fprintf(stderr, "Couldn't create file: %s\n", filename);
+    sprintf(filename, "NO_FILE\0");
+    return filename;
+  } else {
+    fprintf(stderr, "Opening file: %s\n", filename);
+  }
+  fprintf(f, "Save file for game run on %s\n", ctime(&g->start));
+  fprintf(f, "Size:                         %d %d %d %d\n", g->size.x, g->size.y, g->size.z, g->size.w);
+  fprintf(f, "Cursor:                       %d %d %d %d\n", g->cursor.x, g->cursor.y, g->cursor.z, g->cursor.w);
+  fprintf(f, "Len:                          %lu\n", g->len);
+  fprintf(f, "Uncovered:                    %lu\n", g->uncovered);
+  fprintf(f, "Bombs:                        %lu\n", g->bombs);
+  fprintf(f, "Flagged:                      %lu\n", g->flagged);
+  fprintf(f, "Seed:                         %u\n", g->seed);
+  fprintf(f, "Display width:                %u\n", g->display_width);
+  fprintf(f, "State:                        ");
+  switch (g->state) {
+    case RUNNING:
+      fprintf(f, "Running\n");
+      break;
+    case PAUSED:
+      fprintf(f, "Paused\n");
+      break;
+    case CLICKED_BOMB:
+      fprintf(f, "Clicked bomb\n");
+      break;
+    case GAVE_UP:
+      fprintf(f, "Gave up\n");
+      break;
+    case REVEAL_FIELD:
+      fprintf(f, "Reveal field\n");
+      break;
+    case WIN:
+      fprintf(f, "Win\n");
+      break;
+    default:
+      fprintf(f, "Unkown\n");
+  }
+  filename[19] = '\0';
+  fprintf(f, "Started:                      %s\n", filename);
+  tm_info = localtime(&g->offset);
+  strftime(filename, 20, "%Y-%m-%d_%H:%M:%S", tm_info);
+  fprintf(f, "Offset:                       %s\n", filename);
+  fprintf(f, "Recursion depth:              %u\n\n", g->recursion_depth);
+
+  xy_int bn = find_biggest_number(g);
+  short display_width = (bn.x > bn.y)?bn.x:bn.y;
+
+  unsigned long buffer_size =
+    g->len*(display_width+1) //storage for the numbers plus ','
+    +((g->size.z-1)*g->size.y*g->size.w*2) //storage for vertical lines: '| '
+    +((g->size.w-1)*((g->size.x*(display_width+1)+2)*g->size.z)); //storage for horizontal line: '-+-'
+  char* grid = malloc(buffer_size);
+  char* mask = malloc(buffer_size);
+  char* delta = malloc(buffer_size);
+  for (unsigned long i = 0; i < buffer_size-1; i++) {
+    grid[i] = ' ';
+    mask[i] = ' ';
+    delta[i] = ' ';
+  }
+  unsigned long buffer_offset = 0;
+
+  unsigned long pos;
+  short grid_value;
+  short mask_value;
+  short delta_value;
+  int grid_writen;
+  int mask_writen;
+  int delta_writen;
+
+  for (int w = 0; w < g->size.w; w++) {
+    for (int y = 0; y < g->size.y; y++) {
+      for (int z = 0; z < g->size.z; z++) {
+        for (int x = 0; x < g->size.x-1; x++) {
+          pos = grid_pos(g, (xyzw_int){x, y, z, w});
+          grid_value = g->grid[pos];
+          mask_value = g->mask[pos];
+          delta_value = g->delta[pos];
+          grid_writen = sprintf(&grid[buffer_offset], "%d,", grid_value);
+          grid[buffer_offset+grid_writen] = ' ';
+          mask_writen = sprintf(&mask[buffer_offset], "%d,", mask_value);
+          mask[buffer_offset+mask_writen] = ' ';
+          delta_writen = sprintf(&delta[buffer_offset], "%d,", delta_value);
+          delta[buffer_offset+delta_writen] = ' ';
+          buffer_offset += display_width+1;
+        }
+        pos = grid_pos(g, (xyzw_int){g->size.x-1, y, z, w});
+        grid_value = g->grid[pos];
+        mask_value = g->mask[pos];
+        delta_value = g->delta[pos];
+        grid_writen = sprintf(&grid[buffer_offset], "%d", grid_value);
+        grid[buffer_offset+grid_writen] = ' ';
+        mask_writen = sprintf(&mask[buffer_offset], "%d", mask_value);
+        mask[buffer_offset+mask_writen] = ' ';
+        delta_writen = sprintf(&delta[buffer_offset], "%d", delta_value);
+        delta[buffer_offset+delta_writen] = ' ';
+        buffer_offset += display_width+1;
+        grid[buffer_offset] = '|';
+        mask[buffer_offset] = '|';
+        delta[buffer_offset] = '|';
+        buffer_offset++;
+        grid[buffer_offset] = ' ';
+        mask[buffer_offset] = ' ';
+        delta[buffer_offset] = ' ';
+        buffer_offset++;
+      }
+      buffer_offset -= 2;
+      grid[buffer_offset-1] = '\n';
+      mask[buffer_offset-1] = '\n';
+      delta[buffer_offset-1] = '\n';
+    }
+    if (w != g->size.w-1) {
+      for (int z = 0; z < g->size.z; z++) {
+        for (int x = 0; x < g->size.x*(display_width+1); x++) {
+          grid[buffer_offset] = '-';
+          mask[buffer_offset] = '-';
+          delta[buffer_offset] = '-';
+          buffer_offset++;
+        }
+        grid[buffer_offset] = '+';
+        mask[buffer_offset] = '+';
+        delta[buffer_offset] = '+';
+        buffer_offset++;
+        grid[buffer_offset] = '-';
+        mask[buffer_offset] = '-';
+        delta[buffer_offset] = '-';
+        buffer_offset++;
+      }
+      buffer_offset -= 2;
+      grid[buffer_offset-1] = '\n';
+      mask[buffer_offset-1] = '\n';
+      delta[buffer_offset-1] = '\n';
+    }
+  }
+
+  grid[buffer_offset-1] = '\0';
+  mask[buffer_offset-1] = '\0';
+  delta[buffer_offset-1] = '\0';
+
+  fprintf(f, "Grid:\n");
+  fprintf(f, "%s\n\n", grid);
+  fprintf(f, "Mask:\n");
+  fprintf(f, "%s\n\n", mask);
+  fprintf(f, "Delta:\n");
+  fprintf(f, "%s\n", delta);
+
+  free(grid);
+  free(mask);
+  free(delta);
+
+  fclose(f);
+  return filename;
+}
+
+char* null_first_occ(char* str, char c) {
+  unsigned int i = 0;
+  while (1) {
+    if (str[i] != '\0') {
+      if (str[i] == c) {
+        str[i] = '\0';
+        return &str[i+1];
+      }
+    } else {
+      return &str[i];
+    }
+    i++;
+  }
+}
+
+void remove_spaces(char* str) {
+  unsigned int i = 0;
+  while (1) {
+    if (str[i] != ' ') {
+      str = &str[i];
+      return;
+    }
+    i++;
+  }
+}
+
+grid* read_game_from_file(char* filename) {
+  char * line = NULL;
+  size_t len = 0;
+  ssize_t read;
+  FILE* f = fopen(filename, "r");
+  if (f == NULL) exit(EXIT_FAILURE);
+
+  while ((read = getline(&line, &len, fp)) != -1) {
+    char* rest = null_first_occ(line, ':');
+    remove_spaces(rest);
+    fprintf(stderr, "%s\n", line);
+    fprintf(stderr, "%s\n", rest);
+  }
+
+  fclose(fp);
+  if (line) free(line);
+  return NULL;
 }
 
 void place_mines(grid* g, MTRand r) {
@@ -283,7 +513,7 @@ void place_empty(grid* g, MTRand r) {
   }
 }
 
-grid* create_grid(xyzw_int size, unsigned long bombs, unsigned int seed, unsigned int recusion_depth) {
+grid* create_grid(xyzw_int size, unsigned long bombs, unsigned int seed, unsigned int recursion_depth) {
   unsigned long len = get_size(size);
   grid* g = (grid*)malloc(sizeof(grid)+len*sizeof(short)*3);
   g->size = size;
@@ -298,7 +528,7 @@ grid* create_grid(xyzw_int size, unsigned long bombs, unsigned int seed, unsigne
   g->start = time(0);
   g->paused = time(0);
   g->offset = 0;
-  g->recusion_depth = recusion_depth;
+  g->recursion_depth = recursion_depth;
   g->mask = &(g->grid[len]);
   g->delta = &(g->mask[len]);
   MTRand r = seedRand(g->seed);
@@ -356,6 +586,7 @@ void print_str_at(xy_int p, char* s) {
 
 void repeat_str_at(xy_int p, char c, unsigned int amount) {
   printf("\e[%d;%dH", p.y, p.x);
+  //printf("%c\e[%db", c, amount-1);
   if (amount) printf("%*c", amount, c);
 }
 
@@ -423,7 +654,7 @@ void print_info(grid* g) {
   p.y = 2;
   print_str_at(p, "Game info:");
   p.y += 1;
-  print_at(p); printf("Seed: %d", g->seed);
+  print_at(p); printf("Seed: %u", g->seed);
   p.y += 1;
   print_at(p); printf("Fields uncovered: %lu/%lu", g->uncovered, g->len-g->bombs);
   p.y += 1;
@@ -692,7 +923,7 @@ void print_grid_uncovered(grid* g, short ((*get_value)(grid* g, unsigned long po
 void uncover_field(grid* g, xyzw_int p, short ((*get_value)(grid* g, unsigned long pos)));
 
 void uncover_field(grid* g, xyzw_int p, short ((*get_value)(grid* g, unsigned long pos))) {
-  if (g->recusion_depth) {
+  if (g->recursion_depth) {
     unsigned long pos = grid_pos(g, p);
     if (g->mask[pos] == COVERED) {
       g->mask[pos] = UNCOVERED;
@@ -702,8 +933,8 @@ void uncover_field(grid* g, xyzw_int p, short ((*get_value)(grid* g, unsigned lo
       if (g->grid[pos] == BOMB) {
         g->state = CLICKED_BOMB;
       } else if (g->grid[pos] == 0) {
-        unsigned int recusion_depth = g->recusion_depth;
-        g->recusion_depth -= 1;
+        unsigned int recursion_depth = g->recursion_depth;
+        g->recursion_depth -= 1;
         p.x -= 1;
         p.y -= 1;
         p.z -= 1;
@@ -729,7 +960,7 @@ void uncover_field(grid* g, xyzw_int p, short ((*get_value)(grid* g, unsigned lo
             }
           }
         }
-        g->recusion_depth = recusion_depth;
+        g->recursion_depth = recursion_depth;
       }
     } else {
       if (g->delta[pos] == 0) {
@@ -785,30 +1016,6 @@ short find_empty(grid* g, short ((*get_value)(grid* g, unsigned long pos))) {
     }
   }
   return 1;
-}
-
-xy_int find_biggest_number(grid* g) {
-  int bn = 0;
-  int sn = 0;
-  for (int w = 0; w < g->size.w; w++) {
-    for (int z = 0; z < g->size.z; z++) {
-      for (int y = 0; y < g->size.y; y++) {
-        for (int x = 0; x < g->size.x; x++) {
-          xyzw_int p = {x, y, z, w};
-          unsigned long pos = grid_pos(g, p);
-          if (g->grid[pos] > bn) {
-            bn = g->grid[pos];
-          }
-          if (g->delta[pos] < sn && g->delta[pos] < 0 && g->grid[pos] != BOMB) {
-            sn = g->delta[pos];
-          }
-        }
-      }
-    }
-  }
-  bn = log10(bn)+1;
-  sn = log10(-sn)+2;
-  return (xy_int){(bn < 2)?2:bn, (sn < 2)?2:sn};
 }
 
 void dec_delta(grid* g, unsigned long pos) {
@@ -1331,10 +1538,12 @@ void print_help_menu() {
   move_terminal_cursor_down(); printf("-i, --show_info        Show info about the current game. Can be set to true or false");
   move_terminal_cursor_down(); printf("-u, --show_delta       Field numbers only show unmarked bombs instead of total. Can be set to true or false");
   move_terminal_cursor_down(); printf("-g, --debug            Run in debug mode. Allows editing of field contents");
+  move_terminal_cursor_down(); printf("-l, --load             Load game from save file");
 }
 
 void exit_game_failure() {
   printf("\e[0m");
+  printf("\e[?47l");
   printf("\e[?25h");
   exit(EXIT_FAILURE);
 }
@@ -1352,8 +1561,9 @@ int main(int argc, char** argv) {
   numbuffer[0] = '\0';
   unsigned int numbufferpos = 0;
   short game_running = 1;
-  printf("\e[?25l");
-  printf("\e[s");
+  printf("\e[?47h"); //save screen
+  printf("\e[?25l"); //make cursor invisible
+  printf("\e[s"); //save curosr position
   set_input_mode();
   setlocale(LC_CTYPE, "");
   printf("\e[2J");
@@ -1519,6 +1729,7 @@ int main(int argc, char** argv) {
     {0, 0, 0, DONE, ""},
   };
 
+  printf("\e]0;4d minesweeper\a");
   short (*get_value)(grid* g, unsigned long pos) = NULL;
   void (*print_cursor_func)(grid* g, xyzw_int p, short ((*get_value)(grid* g, unsigned long pos)));
   void (*remove_cursor_func)(grid* g, xyzw_int p, short ((*get_value)(grid* g, unsigned long pos)));
@@ -1545,6 +1756,10 @@ int main(int argc, char** argv) {
     print_info(g);
     print_timer(&t);
   }
+  
+  char* saved_file = save_game_to_file(g);
+  if (strcmp(saved_file, "NO_FILE")) read_game_from_file(saved_file);
+
   int c = getchar();
   g->start = time(0);
   g->paused = g->start;
