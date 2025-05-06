@@ -52,6 +52,11 @@ typedef struct _option {
   char name[15];
 } option;
 
+typedef struct _time_t_error {
+  short error;
+  time_t t;
+} time_t_error;
+
 enum {
   CONTINUE = 0,
   STOP,
@@ -145,7 +150,7 @@ unsigned long get_size(xyzw_int size) {
 }
 
 void print_xyzw(xyzw_int p) {
-  fprintf(stderr, "xyzw_int:\n\tx: %d\n\ty: %d\n\tz: %d\n\ta: %d\n", p.x, p.y, p.z, p.w);
+  fprintf(stderr, "xyzw_int:\n\tx: %d\n\ty: %d\n\tz: %d\n\tw: %d\n", p.x, p.y, p.z, p.w);
 }
 
 uint32_t rand_between(MTRand r, int min, int max) {
@@ -220,14 +225,14 @@ xy_int find_biggest_number(grid* g) {
 }
 
 char* save_game_to_file(grid* g) {
-  char filename = malloc(34);
+  char* filename = malloc(34);
   struct tm* tm_info = localtime(&g->start);
   strftime(filename, 34, "%Y-%m-%d_%H:%M:%S.4dminesweeper", tm_info);
   fprintf(stderr, "%s\n", filename);
   FILE* f = fopen(filename, "w");
   if (f == NULL) {
     fprintf(stderr, "Couldn't create file: %s\n", filename);
-    sprintf(filename, "NO_FILE\0");
+    sprintf(filename, "NO_FILE\0"); //maybe just return NULL?
     return filename;
   } else {
     fprintf(stderr, "Opening file: %s\n", filename);
@@ -377,6 +382,7 @@ char* save_game_to_file(grid* g) {
   free(delta);
 
   fclose(f);
+  strftime(filename, 34, "%Y-%m-%d_%H:%M:%S.4dminesweeper", localtime(&g->start));
   return filename;
 }
 
@@ -395,34 +401,494 @@ char* null_first_occ(char* str, char c) {
   }
 }
 
-void remove_spaces(char* str) {
+char* remove_spaces(char* str) {
   unsigned int i = 0;
   while (1) {
     if (str[i] != ' ') {
-      str = &str[i];
+      return &str[i];
+    }
+    i++;
+  }
+}
+
+void null_on_non_alpha(char* str) {
+  unsigned int i = 0;
+  while (1) {
+    if (!(str[i] == ' ' || str[i] >= 'A' && str[i] <= 'Z' || str[i] >= 'a' && str[i] <= 'z')) {
+      str[i] = '\0';
       return;
     }
     i++;
   }
 }
 
+char* remove_non_num(char* str) {
+  unsigned int i = 0;
+  while (1) {
+    if (str[i] != '\0') {
+      if (str[i] >= '0' && str[i] <= '9') {
+        return &str[i];
+      }
+    } else {
+      return &str[i];
+    }
+    i++;
+  }
+}
+
+time_t_error str_to_time_t(char* str) {
+  time_t_error time;
+  char* ptr1 = str;
+  char* ptr2;
+  struct tm t = {0, 0, 0, 0, 0, 0, 0, 0, -1};
+  ptr1 = remove_non_num(ptr1);
+  t.tm_year = strtol(ptr1, &ptr2, 10)-1900;
+  if (ptr1 == ptr2) {
+    fprintf(stderr, "No year!\n");
+    time.error = 1;
+    return time;
+  }
+  fprintf(stderr, "%d\n", t.tm_year);
+  ptr2 = remove_non_num(ptr2);
+  t.tm_mon = strtol(ptr2, &ptr1, 10)-1;
+  if (ptr1 == ptr2) {
+    fprintf(stderr, "No month!\n");
+    time.error = 2;
+    return time;
+  }
+  fprintf(stderr, "%d\n", t.tm_mon);
+  ptr1 = remove_non_num(ptr1);
+  t.tm_mday = strtol(ptr1, &ptr2, 10);
+  if (ptr1 == ptr2) {
+    fprintf(stderr, "No day!\n");
+    time.error = 3;
+    return time;
+  }
+  fprintf(stderr, "%d\n", t.tm_mday);
+  ptr2 = remove_non_num(ptr2);
+  t.tm_hour = strtol(ptr2, &ptr1, 10);
+  if (ptr1 == ptr2) {
+    fprintf(stderr, "No hours!\n");
+    time.error = 4;
+    return time;
+  }
+  fprintf(stderr, "%d\n", t.tm_hour);
+  ptr1 = remove_non_num(ptr1);
+  t.tm_min = strtol(ptr1, &ptr2, 10);
+  if (ptr1 == ptr2) {
+    fprintf(stderr, "No minutes!\n");
+    time.error = 5;
+    return time;
+  }
+  fprintf(stderr, "%d\n", t.tm_min);
+  ptr2 = remove_non_num(ptr2);
+  t.tm_sec = strtol(ptr2, &ptr1, 10);
+  if (ptr1 == ptr2) {
+    fprintf(stderr, "No seconds!\n");
+    time.error = 6;
+    return time;
+  }
+  fprintf(stderr, "%d\n", t.tm_sec);
+  time.error = 0;
+  time.t = mktime(&t);
+  return time;
+}
+
+short str_to_field(grid* g, short* field, char* str_field) {
+  char* sfield = str_field;
+  char* endptr;
+  xyzw_int p = {0, 0, 0, 0};
+  unsigned long pos;
+  for (unsigned long i = 0; 1; i++) {
+    if (str_field[i] != '\0') {
+      if (str_field[i] == '\n') {
+        str_field[i] = 'n';
+      } else if (str_field[i] == 'n') {
+        fprintf(stderr, "Unexpected character found \"%c\"!\n", endptr[0]);
+        print_xyzw(p);
+        return 10;
+      }
+    } else {
+      break;
+    }
+  }
+  while (1) {
+    if (sfield[0] == '\0') {
+      if (p.x == g->size.x && p.y == g->size.y-1 && p.z == g->size.z-1 && p.w == g->size.w-1) {
+        return 0;
+      } else {
+        fprintf(stderr, "Not enough numbers in field!\n");
+        print_xyzw(p);
+        return 1;
+      }
+    }
+    if (p.x < g->size.x) {
+      pos = grid_pos(g, p);
+      field[pos] = strtol(sfield, &endptr, 10);
+      fprintf(stderr, "%d %d\n", field[pos], pos);
+      p.x++;
+    } else {
+      fprintf(stderr, "X direction filled! Looking for newline (n) or pipe character\n");
+      print_xyzw(p);
+      endptr = remove_spaces(endptr);
+      fprintf(stderr, "Char found: \"%c\"\n", endptr[0]);
+      fprintf(stderr, "String: \"%.*s\"\n", 10, endptr);
+      if (endptr[1] != '\0') {
+        if (endptr[0] == '|') {
+          if (p.x < g->size.x-1) {
+            fprintf(stderr, "Not enough numbers in the x direction!\n");
+            print_xyzw(p);
+            return 3;
+          }
+          p.z++;
+          if (p.z >= g->size.z) {
+            fprintf(stderr, "Too many numbers in the z direction!\n");
+            print_xyzw(p);
+            return 4;
+          }
+        } else if (endptr[0] == 'n') {
+          if (p.z < g->size.z-1) {
+            fprintf(stderr, "Not enough numbers in the z direction!\n");
+            print_xyzw(p);
+            return 5;
+          }
+          p.z = 0;
+          if (endptr[1] == '-' && endptr[2] == '-') {
+            fprintf(stderr, "Inc w\n");
+            if (p.y < g->size.y-1) {
+              fprintf(stderr, "Not enough numbers in the y direction!\n");
+              print_xyzw(p);
+              return 6;
+            }
+            p.y = 0;
+            p.w++;
+            if (p.w >= g->size.w) {
+              fprintf(stderr, "Too many nubers in the w direction!\n");
+              print_xyzw(p);
+              return 7;
+            }
+            short i = 1;
+            while(i) {
+              endptr++;
+              if (endptr[0] == '\0' || endptr[0] == 'n') i = 0;
+            }
+          } else {
+            p.y++;
+            if (p.y >= g->size.y) {
+              fprintf(stderr, "Too many number in the y direction!\n");
+              print_xyzw(p);
+              return 9;
+            }
+          }
+        } else {
+          strtol(sfield, &endptr, 10);
+          if (sfield == endptr) {
+            fprintf(stderr, "Unexpected character found \"%c\"!\n", endptr[0]);
+            print_xyzw(p);
+            return 10;
+          } else {
+            fprintf(stderr, "Too many numbers in x direction!\n");
+            print_xyzw(p);
+            return 2;
+          }
+        }
+      } else {
+        if (p.x == g->size.x && p.y == g->size.y-1 && p.z == g->size.z-1 && p.w == g->size.w-1) {
+          return 0;
+        } else {
+          fprintf(stderr, "Not enough numbers in field!\n");
+          print_xyzw(p);
+          return 1;
+        }
+      }
+      fprintf(stderr, "String: \"%.*s\"\n", 10, endptr);
+      p.x = 0;
+    }
+    sfield = endptr+1;
+  }
+}
+
 grid* read_game_from_file(char* filename) {
+  fprintf(stderr, "%s\n", filename);
   char * line = NULL;
-  size_t len = 0;
+  size_t str_len = 0;
   ssize_t read;
+  unsigned int line_num = 0;
   FILE* f = fopen(filename, "r");
   if (f == NULL) exit(EXIT_FAILURE);
 
-  while ((read = getline(&line, &len, fp)) != -1) {
+  short size_set = 0;
+  xyzw_int size;
+  xyzw_int cursor;
+  unsigned long len;
+  unsigned long uncovered;
+  unsigned long bombs;
+  unsigned long flagged;
+  unsigned int seed;
+  unsigned short display_width;
+  int state;
+  time_t start;
+  //time_t paused;
+  time_t offset;
+  unsigned int recursion_depth;
+
+  grid* g = NULL;
+  unsigned long field_size;
+  char* str_field = NULL;
+
+  while ((read = getline(&line, &str_len, f)) != -1) {
+    line_num++;
+    for (int n = 0; n < read-1; n++) {
+      line[n] = tolower(line[n]);
+    }
     char* rest = null_first_occ(line, ':');
-    remove_spaces(rest);
+    char* endptr;
+    rest = remove_spaces(rest);
+    if (line[read-1] == '\n') line[read-1] = '\0';
     fprintf(stderr, "%s\n", line);
     fprintf(stderr, "%s\n", rest);
+    if (strcmp(line, "size") == 0) {
+      size.x = strtol(rest, &endptr, 10);
+      if (rest == endptr) {
+        fprintf(stderr, "No number was found in \"%s\" for %s x!\nIn file \"%s\" at line %d\n", rest, line, filename, line_num);
+        return NULL;
+      }
+      endptr = remove_spaces(endptr);
+      size.y = strtol(endptr, &rest, 10);
+      if (rest == endptr) {
+        fprintf(stderr, "No number was found in \"%s\" for %s y!\nIn file \"%s\" at line %d\n", rest, line, filename, line_num);
+        return NULL;
+      }
+      rest = remove_spaces(rest);
+      size.z = strtol(rest, &endptr, 10);
+      if (rest == endptr) {
+        fprintf(stderr, "No number was found in \"%s\" for %s z!\nIn file \"%s\" at line %d\n", rest, line, filename, line_num);
+        return NULL;
+      }
+      endptr = remove_spaces(endptr);
+      size.w = strtol(endptr, &rest, 10);
+      if (rest == endptr) {
+        fprintf(stderr, "No number was found in \"%s\" for %s w!\nIn file \"%s\" at line %d\n", rest, line, filename, line_num);
+        return NULL;
+      }
+      print_xyzw(size);
+    } else if (strcmp(line, "cursor") == 0) {
+      cursor.x = strtol(rest, &endptr, 10);
+      if (rest == endptr) {
+        fprintf(stderr, "No number was found in \"%s\" for %s x!\nIn file \"%s\" at line %d\n", rest, line, filename, line_num);
+        return NULL;
+      }
+      endptr = remove_spaces(endptr);
+      cursor.y = strtol(endptr, &rest, 10);
+      if (rest == endptr) {
+        fprintf(stderr, "No number was found in \"%s\" for %s y!\nIn file \"%s\" at line %d\n", rest, line, filename, line_num);
+        return NULL;
+      }
+      rest = remove_spaces(rest);
+      cursor.z = strtol(rest, &endptr, 10);
+      if (rest == endptr) {
+        fprintf(stderr, "No number was found in \"%s\" for %s z!\nIn file \"%s\" at line %d\n", rest, line, filename, line_num);
+        return NULL;
+      }
+      endptr = remove_spaces(endptr);
+      cursor.w = strtol(endptr, &rest, 10);
+      if (rest == endptr) {
+        fprintf(stderr, "No number was found in \"%s\" for %s w!\nIn file \"%s\" at line %d\n", rest, line, filename, line_num);
+        return NULL;
+      }
+      print_xyzw(cursor);
+      size_set = 1;
+    } else if (strcmp(line, "len") == 0) {
+      len = strtol(rest, &endptr, 10);
+      if (rest == endptr) {
+        fprintf(stderr, "No number was found in \"%s\" for %s!\nIn file \"%s\" at line %d\n", rest, line, filename, line_num);
+        return NULL;
+      }
+      fprintf(stderr, "%ld\n", len);
+    } else if (strcmp(line, "uncovered") == 0) {
+      uncovered = strtol(rest, &endptr, 10);
+      if (rest == endptr) {
+        fprintf(stderr, "No number was found in \"%s\" for %s!\nIn file \"%s\" at line %d\n", rest, line, filename, line_num);
+        return NULL;
+      }
+      fprintf(stderr, "%ld\n", uncovered);
+    } else if (strcmp(line, "bombs") == 0) {
+      bombs = strtol(rest, &endptr, 10);
+      if (rest == endptr) {
+        fprintf(stderr, "No number was found in \"%s\" for %s!\nIn file \"%s\" at line %d\n", rest, line, filename, line_num);
+        return NULL;
+      }
+      fprintf(stderr, "%ld\n", bombs);
+    } else if (strcmp(line, "flagged") == 0) {
+      flagged = strtol(rest, &endptr, 10);
+      if (rest == endptr) {
+        fprintf(stderr, "No number was found in \"%s\" for %s!\nIn file \"%s\" at line %d\n", rest, line, filename, line_num);
+        return NULL;
+      }
+      fprintf(stderr, "%ld\n", flagged);
+    } else if (strcmp(line, "seed") == 0) {
+      seed = strtol(rest, &endptr, 10);
+      if (rest == endptr) {
+        fprintf(stderr, "No number was found in \"%s\" for %s!\nIn file \"%s\" at line %d\n", rest, line, filename, line_num);
+        return NULL;
+      }
+      fprintf(stderr, "%ld\n", seed);
+    } else if (strcmp(line, "display width") == 0) {
+      display_width = strtol(rest, &endptr, 10);
+      if (rest == endptr) {
+        fprintf(stderr, "No number was found in \"%s\" for %s!\nIn file \"%s\" at line %d\n", rest, line, filename, line_num);
+        return NULL;
+      }
+      fprintf(stderr, "%ld\n", display_width);
+    } else if (strcmp(line, "state") == 0) {
+      null_on_non_alpha(rest);
+      fprintf(stderr, "\"%s\"\n", rest);
+      if (strcmp(rest, "running") == 0) {
+        state = RUNNING;
+      } else if (strcmp(rest, "paused") == 0) {
+        state = PAUSED;
+      } else if (strcmp(rest, "clicked bomb") == 0) {
+        state = CLICKED_BOMB;
+      } else if (strcmp(rest, "gave up") == 0) {
+        state = GAVE_UP;
+      } else if (strcmp(rest, "reveal field") == 0) {
+        state = REVEAL_FIELD;
+      } else if (strcmp(rest, "win") == 0) {
+        state = WIN;
+      } else {
+        fprintf(stderr, "Unrecognized state \"%s\" for %s!\nIn file \"%s\" at line %d\n", rest, line, filename, line_num);
+        return NULL;
+      }
+    } else if (strcmp(line, "started") == 0) {
+      time_t_error time = str_to_time_t(rest);
+      if (time.error) {
+        fprintf(stderr, "Invalid date \"%s\" for %s! Error %d\nIn file \"%s\" at line %d\n", rest, line, time.error, filename, line_num);
+        return NULL;
+      }
+      start = time.t;
+      fprintf(stderr, "%s\n", ctime(&start));
+    } else if (strcmp(line, "offset") == 0) {
+      time_t_error time = str_to_time_t(rest);
+      if (time.error) {
+        fprintf(stderr, "Invalid date \"%s\" for %s! Error %d\nIn file \"%s\" at line %d\n", rest, line, time.error, filename, line_num);
+        return NULL;
+      }
+      offset = time.t;
+      fprintf(stderr, "%s\n", ctime(&offset));
+    } else if (strcmp(line, "recursion depth") == 0) {
+      recursion_depth = strtol(rest, &endptr, 10);
+      if (rest == endptr) {
+        fprintf(stderr, "No number was found in \"%s\" for %s!\nIn file \"%s\" at line %d\n", rest, line, filename, line_num);
+        return NULL;
+      }
+      fprintf(stderr, "%ld\n", recursion_depth);
+    } else if (strcmp(line, "grid") == 0) {
+      if (!size_set) {
+        fprintf(stderr, "Size of %s not set before calling %s!\nPlease add or move size to the top of the save file\n", line, line);
+        return NULL;
+      }
+      if (g == NULL) {
+        unsigned long g_len = get_size(size);
+        g = (grid*)malloc(sizeof(grid)+g_len*sizeof(short)*3);
+        g->mask = &(g->grid[g_len]);
+        g->delta = &(g->mask[g_len]);
+        g->size.x = size.x;
+        g->size.y = size.y;
+        g->size.z = size.z;
+        g->size.w = size.w;
+        read = getline(&line, &str_len, f);
+        field_size = read*(size.y*size.w+size.w-1);
+        str_field = malloc(field_size+1);
+        memcpy(str_field, line, read);
+        fprintf(stderr, "%d %d\n", field_size, read);
+        fread(&str_field[read], field_size-read, 1, f);
+        str_field[field_size] = '\0';
+      } else {
+        fread(str_field, field_size, 1, f);
+        str_field[field_size] = '\0';
+      }
+      fprintf(stderr, "\"\n%s\"\n", str_field);
+      short status = str_to_field(g, g->grid, str_field);
+      fprintf(stderr, "%d\n", status);
+    } else if (strcmp(line, "mask") == 0) {
+      if (!size_set) {
+        fprintf(stderr, "Size of %s not set before calling %s!\nPlease add or move size to the top of the save file\n", line, line);
+        return NULL;
+      }
+      if (g == NULL) {
+        unsigned long g_len = get_size(size);
+        g = (grid*)malloc(sizeof(grid)+g_len*sizeof(short)*3);
+        g->mask = &(g->grid[len]);
+        g->delta = &(g->mask[len]);
+        g->size.x = size.x;
+        g->size.y = size.y;
+        g->size.z = size.z;
+        g->size.w = size.w;
+        read = getline(&line, &str_len, f);
+        field_size = read*(size.y*size.w+size.w-1);
+        str_field = malloc(field_size+1);
+        memcpy(str_field, line, read);
+        fprintf(stderr, "%d %d\n", field_size, read);
+        fread(&str_field[read], field_size-read, 1, f);
+        str_field[field_size] = '\0';
+      } else {
+        fread(str_field, field_size, 1, f);
+        str_field[field_size] = '\0';
+      }
+      fprintf(stderr, "\"\n%s\"\n", str_field);
+      short status = str_to_field(g, g->mask, str_field);
+      fprintf(stderr, "%d\n", status);
+    } else if (strcmp(line, "delta") == 0) {
+      if (!size_set) {
+        fprintf(stderr, "Size of %s not set before calling %s!\nPlease add or move size to the top of the save file\n", line, line);
+        return NULL;
+      }
+      if (g == NULL) {
+        unsigned long g_len = get_size(size);
+        g = (grid*)malloc(sizeof(grid)+g_len*sizeof(short)*3);
+        g->mask = &(g->grid[len]);
+        g->delta = &(g->mask[len]);
+        g->size.x = size.x;
+        g->size.y = size.y;
+        g->size.z = size.z;
+        g->size.w = size.w;
+        read = getline(&line, &str_len, f);
+        field_size = read*(size.y*size.w+size.w-1);
+        str_field = calloc(field_size+1, 1);
+        memcpy(str_field, line, read);
+        fprintf(stderr, "%d %d\n", field_size, read);
+        fread(&str_field[read], field_size-read, 1, f);
+      } else {
+        fread(str_field, field_size, 1, f);
+      }
+      fprintf(stderr, "\"\n%s\"\n", str_field);
+      short status = str_to_field(g, g->delta, str_field);
+      fprintf(stderr, "%d\n", status);
+    }
   }
 
-  fclose(fp);
+  if (str_field != NULL) {
+    fprintf(stderr, "%s\n", str_field);
+    free(str_field);
+  } else {
+    fprintf(stderr, "No grid/mask/delta!\n");
+    return NULL;
+  }
+  g->cursor = cursor;
+  g->len = len;
+  g->uncovered = uncovered;
+  g->bombs = bombs;
+  g->flagged = flagged;
+  g->seed = seed;
+  g->display_width = display_width;
+  g->state = state;
+  g->start = start;
+  g->paused = time(0);
+  g->offset = offset;
+  g->recursion_depth = recursion_depth;
+  fclose(f);
   if (line) free(line);
-  return NULL;
+  return g;
 }
 
 void place_mines(grid* g, MTRand r) {
@@ -1534,7 +2000,7 @@ void print_help_menu() {
   move_terminal_cursor_down(); printf("-s, --seed             Input seed as unsigned integer");
   move_terminal_cursor_down(); printf("-b, --bombs            Input amount of bombs as unsigned integer");
   move_terminal_cursor_down(); printf("-r, --recursion_depth  The amount of recursion allowed when uncovering fields");
-  move_terminal_cursor_down(); printf("-a, --area, --size     Size of the game (must be given as a comma separated list of unsigned integers e.g.: 4, 4, 4, 4)");
+  move_terminal_cursor_down(); printf("-a, --area, --size     Size of the game (must be given as a list of unsigned integers e.g.: -a 4 4 4 4)");
   move_terminal_cursor_down(); printf("-i, --show_info        Show info about the current game. Can be set to true or false");
   move_terminal_cursor_down(); printf("-u, --show_delta       Field numbers only show unmarked bombs instead of total. Can be set to true or false");
   move_terminal_cursor_down(); printf("-g, --debug            Run in debug mode. Allows editing of field contents");
@@ -1756,9 +2222,12 @@ int main(int argc, char** argv) {
     print_info(g);
     print_timer(&t);
   }
-  
-  char* saved_file = save_game_to_file(g);
-  if (strcmp(saved_file, "NO_FILE")) read_game_from_file(saved_file);
+
+  //char* saved_file = save_game_to_file(g);
+  //if (strcmp(saved_file, "NO_FILE")) read_game_from_file(saved_file);
+  free(g);
+  g = read_game_from_file("test.4dminesweeper");
+  //free(saved_file);
 
   int c = getchar();
   g->start = time(0);
