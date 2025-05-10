@@ -47,14 +47,14 @@ gcc main.c mtwister.c -lm -o 4dminsweeper
 ```
 
 > [!WARNING]
-> This program was made for Linux, i doubt that it would work on windows
+> This program was made for [Linux](https://en.wikipedia.org/wiki/Linux), i doubt that it would work on [Windows](https://www.microsoft.com/en-us/windows)
 
 > [!TIP]
-> If you want to try it on windows, you could try using [WSL](https://learn.microsoft.com/en-us/windows/wsl/). (I have not tested this, I don't know if it will work...)
+> If you want to try it on [Windows](https://www.microsoft.com/en-us/windows), you could try using [WSL](https://learn.microsoft.com/en-us/windows/wsl/) (I have not tested this, I don't know if it will work...)
 
 > [!WARNING]
-> This program was only tested on Arch Linux!
-> According to this [issue](https://stackoverflow.com/questions/1662909/undefined-reference-to-pthread-create-in-linux), you have to add `-pthread` on Ubuntu systems e.g.: `gcc main.c mtwister.c -lm -pthread -o 4dminsweeper
+> This program is developed and tested on [Arch Linux](https://archlinux.org/)! (An old version was tested once on [Ubuntu server 20.04 LTS](https://releases.ubuntu.com/focal/))
+> According to this [issue](https://stackoverflow.com/questions/1662909/undefined-reference-to-pthread-create-in-linux), you have to add `-pthread` on [Ubuntu distributions](https://ubuntu.com/) e.g.: `gcc main.c mtwister.c -lm -pthread -o 4dminsweeper` (This possibly applies to [Debian based distributions](https://distrowatch.com/search.php?basedon=Debian) in general, but I have not tested this)
 `
 
 To run the program, simply type:
@@ -85,7 +85,7 @@ There are a few extra options you could add, if you don't want to edit the setti
 > When running the program in debug mode, make sure to send the error messages somewhere else by appending `2> [file descriptor]` to the command e.g.: `./4dminesweeper -g 2> error.txt`
 
 > [!TIP]
-> To send the error messages to a different terminal, go to said terminal and type `tty`. This will return something like `/dev/pts/[number]` (e.g.: `/dev/pts/2`). Now you have the _file descriptor_ of that terminal. You can use `2>` to send everything that is printed to standard error, to whatever you put after it (e.g.: the _file descriptor_ of a terminal: `./4dminesweeper -g 2> /dev/pts/2`). (For your information: I still consider myself a Linux noob. I am pretty sure all the information I have provided is correct. Please do your own research! A good place to start is the [Arch wiki](https://wiki.archlinux.org) or any of the many Linux forums)
+> To send the error messages to a different terminal, go to said terminal and type `tty`. This will return something like `/dev/pts/[number]` (e.g.: `/dev/pts/2`). Now you have the _file descriptor_ of that terminal. You can use `2>` to send everything that is printed to standard error, to whatever you put after it (e.g.: the _file descriptor_ of a terminal: `./4dminesweeper -g 2> /dev/pts/2`). (For your information: I still consider myself a Linux noob. I am pretty sure all the information I have provided is correct. Please do your own research! A good place to start is the [Arch wiki](https://wiki.archlinux.org) or any of the many Linux forums (Check the forum of your distribution first))
 
 ## TODO
 
@@ -131,7 +131,7 @@ There are a few extra options you could add, if you don't want to edit the setti
 
 ## Special thanks
 
-To GNU for their licence and the code for setting the terminal to [noncanonical mode](https://www.gnu.org/software/libc/manual/html_node/Noncanon-Example.html)
+To [GNU](https://www.gnu.org/) for their licence and the code for setting the terminal to [noncanonical mode](https://www.gnu.org/software/libc/manual/html_node/Noncanon-Example.html)
 
 To [EsultaniK](https://github.com/ESultanik) and [Wallabra](https://github.com/wallabra) for writing the code for the [Mersenne twister](https://github.com/ESultanik/mtwister)
 
