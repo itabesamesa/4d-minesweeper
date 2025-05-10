@@ -2028,14 +2028,14 @@ void print_help_menu() {
   move_terminal_cursor_down();
   move_terminal_cursor_down(); printf("-h, -?, --help         Show this menu");
   move_terminal_cursor_down(); printf("-d, --do_random        If true, sets the seed to the current time");
-  move_terminal_cursor_down(); printf("-s, --seed             Input seed as unsigned integer");
-  move_terminal_cursor_down(); printf("-b, --bombs            Input amount of bombs as unsigned integer");
+  move_terminal_cursor_down(); printf("-s, --seed             Input seed as an unsigned integer");
+  move_terminal_cursor_down(); printf("-b, --bombs            Input amount of bombs as an unsigned integer");
   move_terminal_cursor_down(); printf("-r, --recursion_depth  The amount of recursion allowed when uncovering fields");
   move_terminal_cursor_down(); printf("-a, --area, --size     Size of the game (must be given as a list of unsigned integers e.g.: -a 4 4 4 4)");
   move_terminal_cursor_down(); printf("-i, --show_info        Show info about the current game. Can be set to true or false");
-  move_terminal_cursor_down(); printf("-u, --show_delta       Field numbers only show unmarked bombs instead of total. Can be set to true or false");
+  move_terminal_cursor_down(); printf("-u, --show_delta       Field numbers only show unmarked bombs instead of the total amount. Can be set to true or false");
   move_terminal_cursor_down(); printf("-g, --debug            Run in debug mode. Allows editing of field contents");
-  move_terminal_cursor_down(); printf("-l, --load             Load game from save file");
+  move_terminal_cursor_down(); printf("-l, --load             Load game from save file (currently not implemented)");
 }
 
 void exit_game_failure() {
