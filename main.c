@@ -57,6 +57,13 @@ typedef struct _time_t_error {
   time_t t;
 } time_t_error;
 
+typedef struct _save_file_error {
+  grid* g;
+  int error;
+  xy_int p;
+  //char message[];
+} save_file_error;
+
 enum {
   CONTINUE = 0,
   STOP,
@@ -85,6 +92,30 @@ enum {
   REVEAL_FIELD,
   WIN,
 };
+
+/*enum {
+  SUCCESS = 0,
+  NO_SIZE,
+  NO_CURSOR,
+  NO_LEN,
+  NO_UNCOVERED,
+  NO_BOMBS,
+  NO_FLAGGED,
+  NO_SEED,
+  NO_DISPLAY_WIDTH,
+  NO_SIZE,
+  NO_OFFSET,
+  NO_RECURSION_DEPTH,
+};
+
+enum {
+  TIME_NO_YEAR = 1,
+  TIME_NO_MONTH,
+  TIME_NO_DAY,
+  TIME_NO_HOURS,
+  TIME_NO_MINUTES,
+  TIME_NO_SECONDS,
+};*/
 
 short COVERED_LIGHT[3] = {0x66, 0x66, 0x66};
 short COVERED_DARK[3] = {0x3b, 0x3b, 0x3b};
@@ -2225,8 +2256,8 @@ int main(int argc, char** argv) {
 
   //char* saved_file = save_game_to_file(g);
   //if (strcmp(saved_file, "NO_FILE")) read_game_from_file(saved_file);
-  free(g);
-  g = read_game_from_file("test.4dminesweeper");
+  //free(g);
+  //g = read_game_from_file("test.4dminesweeper");
   //free(saved_file);
 
   int c = getchar();
@@ -2574,6 +2605,7 @@ int main(int argc, char** argv) {
         c = 0;
         break;
       case 113: //q
+        if (op[9].value) pthread_cancel(timerthread);
         exit_game();
         free(g);
         exit(EXIT_SUCCESS);

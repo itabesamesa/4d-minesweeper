@@ -123,7 +123,10 @@ There are a few extra options you could add, if you don't want to edit the setti
 - [x] Implement chording for marking fields
 - [x] Change title to 4d minesweeper
 - [x] Save game state
-- [ ] Restore game from save file
+- [x] Restore game from save file
+- [ ] Make saving and restoring actually accessible
+- [ ] Add SQL database to track statistics, cause fun, probably
+- [ ] Add tutorial
 
 ## Special thanks
 
