@@ -55,7 +55,6 @@ gcc main.c mtwister.c -lm -o 4dminsweeper
 > [!WARNING]
 > This program is developed and tested on [Arch Linux](https://archlinux.org/)! (An old version was tested once on [Ubuntu server 20.04 LTS](https://releases.ubuntu.com/focal/))
 > According to this [issue](https://stackoverflow.com/questions/1662909/undefined-reference-to-pthread-create-in-linux), you have to add `-pthread` on [Ubuntu distributions](https://ubuntu.com/) e.g.: `gcc main.c mtwister.c -lm -pthread -o 4dminsweeper` (This possibly applies to [Debian based distributions](https://distrowatch.com/search.php?basedon=Debian) in general, but I have not tested this)
-`
 
 To run the program, simply type:
 
@@ -119,7 +118,7 @@ There are a few extra options you could add, if you don't want to edit the setti
 - [x] Sometimes field turns wide randomly
 - [x] Timer disappears after new game
 - [x] Implement chording for uncovering fields
-- [ ] Improve chording for uncovering fields
+- [ ] Improve chording for uncovering fields (recursive chording)
 - [x] Implement chording for marking fields
 - [x] Change terminal title to 4d minesweeper
 - [x] Save game state

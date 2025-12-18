@@ -1,3 +1,9 @@
+/*
+ *  This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+ *  This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *  You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>. 
+ */
+
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,6 +40,7 @@ typedef struct _grid {
   time_t paused;
   time_t offset;
   unsigned int recursion_depth;
+  char* saved_file;
   short* mask;
   short* delta;
   short grid[];
@@ -167,6 +174,13 @@ set_input_mode (void)
   tattr.c_cc[VMIN] = 1;
   tattr.c_cc[VTIME] = 0;
   tcsetattr (STDIN_FILENO, TCSAFLUSH, &tattr);
+}
+
+void free_grid(grid* g) {
+  if (g->saved_file) free(g->saved_file);
+  //free(g->mask);
+  //free(g->delta);
+  free(g);
 }
 
 void exit_game() {
@@ -317,7 +331,7 @@ char* save_game_to_file(grid* g) {
   char* grid = malloc(buffer_size);
   char* mask = malloc(buffer_size);
   char* delta = malloc(buffer_size);
-  for (unsigned long i = 0; i < buffer_size-1; i++) {
+  for (unsigned long i = 0; i < buffer_size; i++) {
     grid[i] = ' ';
     mask[i] = ' ';
     delta[i] = ' ';
@@ -414,6 +428,7 @@ char* save_game_to_file(grid* g) {
 
   fclose(f);
   strftime(filename, 34, "%Y-%m-%d_%H:%M:%S.4dminesweeper", localtime(&g->start));
+  g->saved_file = filename;
   return filename;
 }
 
@@ -535,7 +550,7 @@ short str_to_field(grid* g, short* field, char* str_field) {
       if (str_field[i] == '\n') {
         str_field[i] = 'n';
       } else if (str_field[i] == 'n') {
-        fprintf(stderr, "Unexpected character found \"%c\"!\n", endptr[0]);
+        //fprintf(stderr, "Unexpected character found \"%c\"!\n", endptr[0]);
         print_xyzw(p);
         return 10;
       }
@@ -548,7 +563,7 @@ short str_to_field(grid* g, short* field, char* str_field) {
       if (p.x == g->size.x && p.y == g->size.y-1 && p.z == g->size.z-1 && p.w == g->size.w-1) {
         return 0;
       } else {
-        fprintf(stderr, "Not enough numbers in field!\n");
+        //fprintf(stderr, "Not enough numbers in field!\n");
         print_xyzw(p);
         return 1;
       }
@@ -556,45 +571,45 @@ short str_to_field(grid* g, short* field, char* str_field) {
     if (p.x < g->size.x) {
       pos = grid_pos(g, p);
       field[pos] = strtol(sfield, &endptr, 10);
-      fprintf(stderr, "%d %d\n", field[pos], pos);
+      //fprintf(stderr, "%d %d\n", field[pos], pos);
       p.x++;
     } else {
-      fprintf(stderr, "X direction filled! Looking for newline (n) or pipe character\n");
+      //fprintf(stderr, "X direction filled! Looking for newline (n) or pipe character\n");
       print_xyzw(p);
       endptr = remove_spaces(endptr);
-      fprintf(stderr, "Char found: \"%c\"\n", endptr[0]);
-      fprintf(stderr, "String: \"%.*s\"\n", 10, endptr);
+      //fprintf(stderr, "Char found: \"%c\"\n", endptr[0]);
+      //fprintf(stderr, "String: \"%.*s\"\n", 10, endptr);
       if (endptr[1] != '\0') {
         if (endptr[0] == '|') {
           if (p.x < g->size.x-1) {
-            fprintf(stderr, "Not enough numbers in the x direction!\n");
+            //fprintf(stderr, "Not enough numbers in the x direction!\n");
             print_xyzw(p);
             return 3;
           }
           p.z++;
           if (p.z >= g->size.z) {
-            fprintf(stderr, "Too many numbers in the z direction!\n");
+            //fprintf(stderr, "Too many numbers in the z direction!\n");
             print_xyzw(p);
             return 4;
           }
         } else if (endptr[0] == 'n') {
           if (p.z < g->size.z-1) {
-            fprintf(stderr, "Not enough numbers in the z direction!\n");
+            //fprintf(stderr, "Not enough numbers in the z direction!\n");
             print_xyzw(p);
             return 5;
           }
           p.z = 0;
           if (endptr[1] == '-' && endptr[2] == '-') {
-            fprintf(stderr, "Inc w\n");
+            //fprintf(stderr, "Inc w\n");
             if (p.y < g->size.y-1) {
-              fprintf(stderr, "Not enough numbers in the y direction!\n");
+              //fprintf(stderr, "Not enough numbers in the y direction!\n");
               print_xyzw(p);
               return 6;
             }
             p.y = 0;
             p.w++;
             if (p.w >= g->size.w) {
-              fprintf(stderr, "Too many nubers in the w direction!\n");
+              //fprintf(stderr, "Too many nubers in the w direction!\n");
               print_xyzw(p);
               return 7;
             }
@@ -606,7 +621,7 @@ short str_to_field(grid* g, short* field, char* str_field) {
           } else {
             p.y++;
             if (p.y >= g->size.y) {
-              fprintf(stderr, "Too many number in the y direction!\n");
+              //fprintf(stderr, "Too many number in the y direction!\n");
               print_xyzw(p);
               return 9;
             }
@@ -614,11 +629,11 @@ short str_to_field(grid* g, short* field, char* str_field) {
         } else {
           strtol(sfield, &endptr, 10);
           if (sfield == endptr) {
-            fprintf(stderr, "Unexpected character found \"%c\"!\n", endptr[0]);
+            //fprintf(stderr, "Unexpected character found \"%c\"!\n", endptr[0]);
             print_xyzw(p);
             return 10;
           } else {
-            fprintf(stderr, "Too many numbers in x direction!\n");
+            //fprintf(stderr, "Too many numbers in x direction!\n");
             print_xyzw(p);
             return 2;
           }
@@ -627,12 +642,12 @@ short str_to_field(grid* g, short* field, char* str_field) {
         if (p.x == g->size.x && p.y == g->size.y-1 && p.z == g->size.z-1 && p.w == g->size.w-1) {
           return 0;
         } else {
-          fprintf(stderr, "Not enough numbers in field!\n");
+          //fprintf(stderr, "Not enough numbers in field!\n");
           print_xyzw(p);
           return 1;
         }
       }
-      fprintf(stderr, "String: \"%.*s\"\n", 10, endptr);
+      //fprintf(stderr, "String: \"%.*s\"\n", 10, endptr);
       p.x = 0;
     }
     sfield = endptr+1;
@@ -646,7 +661,10 @@ grid* read_game_from_file(char* filename) {
   ssize_t read;
   unsigned int line_num = 0;
   FILE* f = fopen(filename, "r");
-  if (f == NULL) exit(EXIT_FAILURE);
+  if (f == NULL) {
+    printf("Failed to open file: \"%s\"\nExiting\n");
+    exit(EXIT_FAILURE);
+  }
 
   short size_set = 0;
   xyzw_int size;
@@ -897,6 +915,13 @@ grid* read_game_from_file(char* filename) {
       fprintf(stderr, "%d\n", status);
     }
   }
+  printf("%s\n", filename);
+  fprintf(stderr, "%s\n", filename);
+  //g->saved_file = malloc(strlen(filename)+1);
+  //memcpy(g->saved_file, filename, strlen(filename));
+  //strcpy(g->saved_file, filename);
+  //g->saved_file[strlen(filename)] = '\0';
+  g->saved_file = filename;
 
   if (str_field != NULL) {
     fprintf(stderr, "%s\n", str_field);
@@ -1151,13 +1176,13 @@ void print_info(grid* g) {
   p.y = 2;
   print_str_at(p, "Game info:");
   p.y += 1;
-  print_at(p); printf("Seed: %u", g->seed);
+  print_at(p); printf("Seed:             %u", g->seed);
   p.y += 1;
   print_at(p); printf("Fields uncovered: %lu/%lu", g->uncovered, g->len-g->bombs);
   p.y += 1;
-  print_at(p); printf("Bombs flagged: %lu/%lu", g->flagged, g->bombs);
+  print_at(p); printf("Bombs flagged:    %lu/%lu", g->flagged, g->bombs);
   p.y += 1;
-  print_at(p); printf("Started at: %s", ctime(&g->start));
+  print_at(p); printf("Started at:       %s", ctime(&g->start));
   p.y += 1;
   p.y += 1;
   print_at(p);
@@ -1179,6 +1204,14 @@ void print_info(grid* g) {
     case WIN:
       printf("Game won");
       break;
+  }
+  if (g->saved_file) {
+    p.y += 1;
+    if (strcmp(g->saved_file, "NO_FILE")) {
+      print_at(p); printf("COULDN'T SAVE FILE");
+    } else {
+      print_at(p); printf("Saved file:       %s", g->saved_file);
+    }
   }
 }
 
@@ -1206,7 +1239,7 @@ void print_timer(timer* t) {
   print_at(t->pos);
   unsigned int formated[3];
   format_timer(formated, (time(0)-t->g->paused)+t->g->offset);
-  printf("\e[0m\e[KTime elapsed: %d:%02d:%02d", formated[0], formated[1], formated[2]);
+  printf("\e[0m\e[KTime elapsed:     %d:%02d:%02d", formated[0], formated[1], formated[2]);
 }
 
 void* update_time_elapsed(void* args) {
@@ -2058,6 +2091,8 @@ int main(int argc, char** argv) {
   numbuffer[0] = '\0';
   unsigned int numbufferpos = 0;
   short game_running = 1;
+  short load_file = 0;
+  char* file_name = NULL;
   printf("\e[?47h"); //save screen
   printf("\e[?25l"); //make cursor invisible
   printf("\e[s"); //save curosr position
@@ -2208,6 +2243,13 @@ int main(int argc, char** argv) {
         }
       } else if (strcmp(argv[i], "-g") == 0 || strcmp(argv[i], "--debug") == 0) {
         debug_mode = 1;
+      } else if (strcmp(argv[i], "-l") == 0 || strcmp(argv[i], "--load") == 0) {
+        load_file = 1;
+        if (i == argc) {
+          printf("No value was provided for option %s!\nPlease provide a file name e.g.: file.4dminesweeper", argv[i-1]);
+          exit_game_failure();
+        }
+        file_name = argv[i+1];
       }
     }
   }
@@ -2235,7 +2277,13 @@ int main(int argc, char** argv) {
   } else {
     get_value = grid_value;
   }
-  grid* g = create_grid(size, op[7].value, (op[5].value)?time(0):op[6].value, op[8].value);
+
+  grid* g = NULL;
+  if (load_file) {
+    g = read_game_from_file(file_name);
+  } else {
+    g = create_grid(size, op[7].value, (op[5].value)?time(0):op[6].value, op[8].value);
+  }
   if (g->state == PAUSED) {
     print_cursor_func = print_cursor_paused_all;
     remove_cursor_func = remove_area_of_influence_paused;
@@ -2604,10 +2652,13 @@ int main(int argc, char** argv) {
         }
         c = 0;
         break;
+      case 15: //ctrl+o
+        save_game_to_file(g);
+        break;
       case 113: //q
         if (op[9].value) pthread_cancel(timerthread);
         exit_game();
-        free(g);
+        free_grid(g);
         exit(EXIT_SUCCESS);
       default:
         (*print_cursor_func)(g, cursor, get_value);
