@@ -20,7 +20,7 @@ You have to find all the mines in a 4 dimensional field. The pink cursor highlig
   Move right in z:       d, ctrl-l
   Move left in z:        a, ctrl-h
   Move up in q:          w, ctrl-k
-  Move down in y:        s, ctrl-j
+  Move down in q:        s, ctrl-j
   Mark bomb:             m, e
   Mark bomb chording:    M, E
   Uncover field:         space
